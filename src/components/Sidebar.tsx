@@ -1,6 +1,7 @@
 import React from "react";
 import { NavLink } from "react-router-dom";
-import { LayoutDashboard, PieChart, ClipboardList, Map, Briefcase, Settings, Activity } from "lucide-react";
+import { LayoutDashboard, PieChart, ClipboardList, Map, Briefcase, Settings, Activity, LogOut } from "lucide-react";
+import { useAuth } from "../App";
 
 const navItems = [
   { path: "/dashboard", label: "Dashboard", icon: <LayoutDashboard size={20} /> },
@@ -12,6 +13,13 @@ const navItems = [
 ];
 
 export const Sidebar: React.FC = () => {
+  const { role, logout } = useAuth();
+  
+  const filteredNavItems = navItems.filter(item => {
+    if (item.path === '/assignments' && (role === 'lgu-admin' || role === 'sys-admin')) return false;
+    return true;
+  });
+
   return (
     <aside className="w-[280px] h-full flex flex-col pt-8 pb-6 z-20 shrink-0 relative isolation-auto">
       <div className="absolute inset-0 bg-white/40 backdrop-blur-3xl border-r border-white/80 shadow-[12px_0_32px_-12px_rgba(0,0,0,0.05)] pointer-events-none -z-10" />
@@ -27,7 +35,7 @@ export const Sidebar: React.FC = () => {
       </div>
 
       <nav className="flex-1 px-5 space-y-1.5 w-full">
-        {navItems.map((item) => (
+        {filteredNavItems.map((item) => (
           <NavLink
             key={item.path}
             to={item.path}
@@ -57,20 +65,25 @@ export const Sidebar: React.FC = () => {
       </nav>
 
       <div className="px-5 mt-auto">
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 to-slate-800 p-5 shadow-xl text-white">
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 to-slate-800 p-5 shadow-xl text-white mb-3">
           <div className="absolute top-0 right-0 w-32 h-32 bg-primary-500/20 rounded-full blur-2xl -mr-10 -mt-10" />
-          <p className="text-xs font-bold text-slate-300 uppercase tracking-widest mb-3">Network</p>
+          <p className="text-xs font-bold text-slate-300 uppercase tracking-widest mb-3">SYSTEM UPTIME</p>
           <div className="flex items-center gap-3">
             <div className="relative flex h-3 w-3">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
             </div>
             <div>
-              <p className="text-sm font-semibold tracking-wide">Sensors Active</p>
-              <p className="text-xs text-slate-400 mt-0.5">Latency: 14ms</p>
+              <p className="text-sm font-semibold tracking-wide">MODELS ACTIVE</p>
+              <p className="text-xs text-slate-400 mt-0.5">yolo, mobilenet, abm</p>
             </div>
           </div>
         </div>
+
+        <button onClick={logout} className="w-full flex items-center justify-center gap-2 p-3 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-2xl font-bold transition-all text-sm group border border-transparent hover:border-rose-100">
+          <LogOut size={18} className="transition-transform group-hover:-translate-x-1" />
+          Terminate Session
+        </button>
       </div>
     </aside>
   );
