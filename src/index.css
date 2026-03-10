@@ -2,7 +2,44 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  @apply antialiased bg-slate-950 text-slate-100;
+@layer base {
+  body {
+    background-color: #f8fafc;
+    background-image: radial-gradient(at 0% 0%, hsla(240, 100%, 98%, 1) 0px, transparent 50%),
+                      radial-gradient(at 100% 0%, hsla(232, 80%, 95%, 1) 0px, transparent 50%);
+    background-attachment: fixed;
+  }
 }
 
+.glass {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.75) 100%);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  box-shadow: 0 4px 24px -2px rgba(17, 24, 39, 0.05), inset 0 0 0 1px rgba(255, 255, 255, 0.5);
+  border-radius: 1rem;
+}
+
+.glass-panel {
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 0.75rem;
+}
+
+/* Custom scrollbar to keep it clean */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.3);
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.5);
+}
