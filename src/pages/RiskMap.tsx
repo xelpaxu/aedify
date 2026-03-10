@@ -1,23 +1,50 @@
 import React, { useState } from "react";
-import { MapContainer, TileLayer, CircleMarker } from "react-leaflet";
+import { MapContainer, TileLayer, CircleMarker, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import { ChevronDown, Search, Activity, CheckCircle2, MapPin, Layers, Crosshair, PlusCircle } from "lucide-react";
+import { mockReports } from "../mockData";
+import { useAuth } from "../App";
+
+// Utility component to update map view dynamically
+function MapUpdater({ center, zoom }: { center: [number, number]; zoom: number }) {
+  const map = useMap();
+  map.setView(center, zoom);
+  return null;
+}
 
 export default function RiskMap() {
   const [mapType, setMapType] = useState<"street" | "satellite">("street");
-  const [selectedHotspot, setSelectedHotspot] = useState<number | null>(null);
-  
-  const hotspots = [
-    { id: 1, lat: 14.6050, lng: 120.9890, status: "High Risk", reportId: "Report #8293", updated: "2 hours ago", loc: "Corner of Mabini & Rizal St.", site: "Tires", color: "#ef4444" },
-    { id: 2, lat: 14.64, lng: 120.94, status: "Warning", reportId: "Report #1024", updated: "5 hours ago", loc: "Quezon Memorial Area", site: "Stagnant Pool", color: "#fbbf24" },
-    { id: 3, lat: 14.54, lng: 120.92, status: "Nominal", reportId: "Report #0932", updated: "1 day ago", loc: "Pasay City Hall", site: "Clearing Ops", color: "#10b981" },
-  ];
+  const [selectedHotspot, setSelectedHotspot] = useState<string | null>(null);
+  const { role } = useAuth();
+
+  let center: [number, number] = [10.6953, 122.5447]; // Default Molo, Iloilo
+  let zoomLevel = 14;
+
+  if (role === 'brgy-calumpang') { center = [10.6975, 122.5367]; zoomLevel = 16; }
+  if (role === 'brgy-sanjuan') { center = [10.6860, 122.5404]; zoomLevel = 16; }
+  if (role === 'brgy-southfundidor') { center = [10.6883, 122.5312]; zoomLevel = 16; }
+
+  const hotspots = mockReports.map(r => ({
+    id: r.id,
+    lat: r.coordinates[0],
+    lng: r.coordinates[1],
+    status: r.risk === 'High' ? 'High Risk' : r.risk === 'Medium' ? 'Warning' : 'Nominal',
+    reportId: r.id,
+    updated: r.timeAgo,
+    loc: r.location,
+    site: r.classification,
+    color: r.risk === 'High' ? '#ef4444' : r.risk === 'Medium' ? '#fbbf24' : '#10b981',
+    photo: r.rawPhoto
+  }));
+
+  // Filter unassigned mock data to display purely for aesthetics right now
+  const unassigned = hotspots.slice(0, 3);
 
   return (
     <div className="h-full w-full relative overflow-hidden bg-slate-100 animate-in fade-in duration-500 rounded-2xl border border-slate-200 shadow-sm flex">
       {/* Background Map Container */}
       <div className="flex-1 relative">
-        <MapContainer center={[14.6091, 120.9822]} zoom={12} className="w-full h-full z-0" zoomControl={false}>
+        <MapContainer center={center} zoom={zoomLevel} className="w-full h-full z-0" zoomControl={false}>
           {mapType === "street" ? (
              <TileLayer
                attribution='&copy; <a href="https://stadiamaps.com/">Stadia</a>'
@@ -30,6 +57,8 @@ export default function RiskMap() {
              />
           )}
 
+          <MapUpdater center={center} zoom={zoomLevel} />
+
           {hotspots.map((point) => (
              <CircleMarker 
                 key={point.id}
@@ -39,9 +68,9 @@ export default function RiskMap() {
                 eventHandlers={{ click: () => setSelectedHotspot(point.id) }}
                 className="cursor-pointer"
              >
-                {point.status === "Warning" && (
+                {point.status === "Warning" || point.status === "High Risk" ? (
                    <CircleMarker center={[point.lat, point.lng]} radius={16} pathOptions={{ color: "none", fillColor: point.color, fillOpacity: 0.3 }} />
-                )}
+                ) : null}
              </CircleMarker>
           ))}
         </MapContainer>
@@ -75,7 +104,7 @@ export default function RiskMap() {
            return (
              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-[60%] pointer-events-auto bg-white rounded-2xl shadow-2xl overflow-hidden w-[300px] border border-slate-100 z-[500] animate-in zoom-in-95 duration-200">
                 <div className="w-full h-[120px] bg-slate-200 relative overflow-hidden">
-                   <img src="https://images.unsplash.com/photo-1579781358055-6b5cfdff00ff?auto=format&fit=crop&q=80&w=400" alt="stagnant water" className="w-full h-full object-cover" />
+                   <img src={data.photo} alt="stagnant water" className="w-full h-full object-cover" />
                    <span className="absolute bottom-3 left-3 bg-slate-900/80 backdrop-blur text-white text-[9px] font-bold uppercase tracking-widest px-2 py-1 rounded shadow-sm border border-white/20">
                       {data.status}
                    </span>
@@ -107,10 +136,12 @@ export default function RiskMap() {
      
                    <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Actions</h4>
                    <div className="flex flex-col gap-2">
-                       <button className="w-full bg-slate-50 border border-slate-200 hover:border-primary-400 text-slate-700 hover:text-primary-700 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5">
-                          <PlusCircle size={14} /> Assign Report to Unit
-                       </button>
-                       <button className="w-full bg-primary-600 hover:bg-primary-700 text-white py-2.5 rounded-xl text-xs font-bold transition-colors">
+                       {role !== 'lgu-admin' && (
+                         <button className="w-full bg-slate-50 border border-slate-200 hover:border-primary-400 text-slate-700 hover:text-primary-700 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-sm">
+                            <PlusCircle size={14} /> Assign Report to Unit
+                         </button>
+                       )}
+                       <button className="w-full bg-primary-600 hover:bg-primary-700 text-white py-2.5 rounded-xl text-xs font-bold transition-colors shadow-sm">
                           View Deep Analysis
                        </button>
                    </div>
@@ -136,17 +167,17 @@ export default function RiskMap() {
             <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">Unassigned Reports Queue</h4>
             
             <div className="space-y-3">
-               {[1, 2, 3].map((_, i) => (
-                  <div key={i} className="border border-slate-100 rounded-xl p-4 hover:bg-primary-50/50 hover:border-primary-200 transition-colors cursor-pointer group">
+               {unassigned.map((rpt, i) => (
+                  <div key={i} className="border border-slate-100 rounded-xl p-4 hover:bg-primary-50/50 hover:border-primary-200 transition-colors cursor-pointer group shadow-sm bg-slate-50/30">
                      <div className="flex justify-between items-start mb-2">
-                        <span className="text-[10px] font-bold text-rose-500 bg-rose-50 px-2 py-0.5 rounded uppercase tracking-wider">Unassigned</span>
-                        <span className="text-[10px] font-bold text-slate-400">#RP-100{i}</span>
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider ${rpt.status === 'High Risk' ? 'text-rose-600 bg-rose-50' : 'text-amber-600 bg-amber-50'}`}>Unassigned</span>
+                        <span className="text-[10px] font-bold text-slate-400">{rpt.reportId}</span>
                      </div>
-                     <p className="font-bold text-slate-800 text-sm mb-1 group-hover:text-primary-700 transition-colors">Stagnant Canal Blockage</p>
-                     <p className="text-xs font-medium text-slate-500 flex items-center gap-1"><MapPin size={12}/> Lapaz Market Vicinity</p>
+                     <p className="font-bold text-slate-800 text-sm mb-1 group-hover:text-primary-700 transition-colors">{rpt.site}</p>
+                     <p className="text-xs font-medium text-slate-500 flex items-start gap-1"><MapPin size={12} className="mt-0.5 flex-shrink-0"/> <span className="line-clamp-1">{rpt.loc}</span></p>
                      <div className="mt-3 flex justify-end">
-                        <button className="text-xs font-bold text-primary-600 hover:text-white hover:bg-primary-600 px-3 py-1.5 rounded bg-primary-50 transition-colors border border-primary-100">
-                           Dispatch
+                        <button className="text-xs font-bold text-primary-600 hover:text-white hover:bg-primary-600 px-3 py-1.5 rounded bg-white shadow-sm transition-colors border border-slate-200 hover:border-primary-600">
+                           {role === 'lgu-admin' ? "View Status" : "Dispatch Unit"}
                         </button>
                      </div>
                   </div>
