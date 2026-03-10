@@ -1,98 +1,67 @@
 import React from "react";
+import { Routes, Route, Navigate } from "react-router-dom";
 import { Sidebar } from "./components/Sidebar";
-import { DashboardPage } from "./pages/DashboardPage";
-import { ReportsPage } from "./pages/ReportsPage";
-import { VerificationPage } from "./pages/VerificationPage";
-import { AssignmentsPage } from "./pages/AssignmentsPage";
-import { RiskMapPage } from "./pages/RiskMapPage";
-import { AnalyticsPage } from "./pages/AnalyticsPage";
-import { LayoutDashboard, FileText, ShieldCheck, ClipboardList, Map, BarChart2, Bell } from "lucide-react";
-
-type SectionId =
-  | "dashboard"
-  | "reports"
-  | "verification"
-  | "assignments"
-  | "risk-map"
-  | "analytics";
-
-const sections: { id: SectionId; label: string; icon?: React.ReactNode }[] = [
-  { id: "dashboard", label: "Dashboard", icon: <LayoutDashboard size={18} /> },
-  { id: "reports", label: "Reports", icon: <FileText size={18} /> },
-  { id: "verification", label: "Verification", icon: <ShieldCheck size={18} /> },
-  { id: "assignments", label: "Assignments", icon: <ClipboardList size={18} /> },
-  { id: "risk-map", label: "Risk Map", icon: <Map size={18} /> },
-  { id: "analytics", label: "Analytics", icon: <BarChart2 size={18} /> },
-];
-
-const pageMeta: Record<SectionId, { title: string; subtitle: string }> = {
-  dashboard: { title: "Barangay Administrator", subtitle: "Welcome back, Admin" },
-  reports: { title: "Reports", subtitle: "View and manage all reports" },
-  verification: { title: "Verification", subtitle: "Verify submitted reports" },
-  assignments: { title: "Assignments", subtitle: "Manage team assignments" },
-  "risk-map": { title: "Risk Map", subtitle: "View dengue risk areas" },
-  analytics: { title: "Analytics", subtitle: "Insights and statistics" },
-};
+import DashboardPage from "./pages/Dashboard";
+import AnalyticsPage from "./pages/Analytics";
+import ReportsPage from "./pages/Reports";
+import RiskMapPage from "./pages/RiskMap";
+import AssignmentsPage from "./pages/Assignments";
+import SettingsPage from "./pages/Settings";
+import { Search, Bell, ChevronDown } from "lucide-react";
 
 export const RootLayout: React.FC = () => {
-  const [activeSection, setActiveSection] = React.useState<SectionId>("dashboard");
-  const ActivePage = pagesBySectionId[activeSection];
-
   return (
-    <div className="flex h-screen bg-white text-slate-900">
-      <Sidebar
-        sections={sections}
-        activeId={activeSection}
-        onSelect={(id) => setActiveSection(id as SectionId)}
-      />
-
-      <main className="flex-1 overflow-y-auto">
-        <header className="flex h-16 items-center justify-between border-b border-slate-200 bg-white px-6">
-          <div>
-            <h1 className="text-lg font-semibold">{pageMeta[activeSection].title}</h1>
-            <p className="text-sm text-slate-400">{pageMeta[activeSection].subtitle}</p>
+    <div className="flex relative h-screen w-full overflow-hidden bg-slate-50 text-slate-800 font-sans selection:bg-primary-500/30">
+      <Sidebar />
+      <main className="flex-1 flex flex-col relative overflow-hidden bg-slate-50/50">
+        <header className="h-[88px] shrink-0 px-8 flex items-center justify-between glass-panel mx-6 mt-6 mb-4 z-10 
+                           shadow-[0_4px_32px_-12px_rgba(0,0,0,0.1)] border border-white/80">
+          <div className="flex items-center gap-4">
+            <div className="w-10 h-10 rounded-xl bg-white shadow-sm flex items-center justify-center border border-slate-100">
+              <Search size={18} className="text-slate-400" />
+            </div>
+            <div>
+              <h2 className="text-[22px] font-extrabold text-slate-900 tracking-tight leading-none mb-1">Aedify Interface</h2>
+              <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Global Surveillance Node</p>
+            </div>
           </div>
 
-          <div className="flex items-center gap-4">
-            {/* Notification Bell */}
-            <button className="relative rounded-full p-2 hover:bg-slate-100 transition">
-              <Bell size={20} className="text-slate-500" />
-              <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-red-500" />
+          <div className="flex items-center gap-6">
+            <button className="relative p-2.5 bg-white/60 hover:bg-white rounded-xl text-slate-400 hover:text-primary-600 transition-all border border-slate-100 shadow-sm shadow-slate-200/50">
+              <Bell size={20} />
+              <span className="absolute max-w-none top-2 right-2 flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500 ring-2 ring-white"></span>
+              </span>
             </button>
 
-            {/* Divider */}
-            <div className="h-8 w-px bg-slate-200" />
+            <div className="w-px h-8 bg-slate-200/60" />
 
-            {/* Profile */}
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 cursor-pointer group">
               <div className="text-right">
-                <p className="text-sm font-semibold">Maria Santos</p>
-                <p className="text-xs text-slate-400">Brgy. Poblacion</p>
+                <p className="text-sm font-bold text-slate-800 group-hover:text-primary-600 transition-colors">Maria Santos</p>
+                <p className="text-[10px] uppercase tracking-widest font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md inline-block">Sys Admin</p>
               </div>
-              <div className="h-9 w-9 rounded-full bg-slate-200 overflow-hidden">
-                <img
-                  src="src/img/profile.jpg"
-                  alt="Profile"
-                  className="h-full w-full object-cover"
-                />
+              <div className="w-12 h-12 rounded-2xl bg-slate-200 border-2 border-white shadow-md flex items-center justify-center overflow-hidden group-hover:shadow-primary-600/20 transition-all group-hover:-translate-y-0.5">
+                <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=150" alt="profile" className="w-full h-full object-cover" />
               </div>
+              <ChevronDown size={14} className="text-slate-400 group-hover:text-slate-600 transition-colors ml-1" />
             </div>
           </div>
         </header>
 
-        <section className="p-6">
-          <ActivePage />
+        <section className="flex-1 overflow-y-auto px-6 pb-6 pt-2 scroll-smooth">
+          <Routes>
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/analytics" element={<AnalyticsPage />} />
+            <Route path="/reports" element={<ReportsPage />} />
+            <Route path="/map" element={<RiskMapPage />} />
+            <Route path="/assignments" element={<AssignmentsPage />} />
+            <Route path="/settings" element={<SettingsPage />} />
+          </Routes>
         </section>
       </main>
     </div>
   );
-};
-
-const pagesBySectionId: Record<SectionId, React.FC> = {
-  dashboard: DashboardPage,
-  reports: ReportsPage,
-  verification: VerificationPage,
-  assignments: AssignmentsPage,
-  "risk-map": RiskMapPage,
-  analytics: AnalyticsPage,
 };
