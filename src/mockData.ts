@@ -1,5 +1,5 @@
-import breedingSite from "../assets/images/breeding-site.jpeg"
-import profile from "../assets/images/profile.jpg"
+import breedingSite from "../public/assets/images/breeding-site.jpeg"
+import profile from "../public/assets/images/profile.jpg"
 
 export const mockReports = [
   {

@@ -1,6 +1,7 @@
 import React from 'react';
 import { useAuth, Role } from '../App';
 import { ShieldCheck, Map, Users, Activity } from 'lucide-react';
+import logo from "../../public/assets/images/favicon.ico";
 
 export default function Login() {
   const { login } = useAuth();
@@ -12,8 +13,8 @@ export default function Login() {
        <div className="absolute top-1/4 right-1/4 w-[500px] h-[500px] bg-primary-200/40 rounded-full blur-[100px] z-0 pointer-events-none"></div>
 
        <div className="relative z-10 text-center mb-10">
-          <div className="w-20 h-20 mx-auto rounded-[24px] bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center text-white shadow-xl shadow-primary-600/30 ring-8 ring-primary-50 mb-6">
-             <Activity size={40} strokeWidth={2.5} />
+          <div className="w-20 h-20 mx-auto rounded-[24px] bg-none flex items-center justify-center text-white mb-6">
+               <img src={logo} alt="Aedify Logo" className="w-20 h-20 object-contain" />
           </div>
           <h1 className="text-4xl font-extrabold tracking-tight text-slate-900 mb-2">Aedify.</h1>
           <p className="text-sm font-bold text-primary-600 tracking-[0.2em] uppercase">VEC-PRO authentication</p>
