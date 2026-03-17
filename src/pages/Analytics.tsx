@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, Legend, BarChart, Bar } from "recharts";
 import { Sparkles, TrendingUp, Activity, Users } from "lucide-react";
+import { mockAssignments } from "../mockData";
 
 const accuracyData = [
   { day: "Mon", mobileNet: 78, yolo: 85 },
@@ -12,13 +13,22 @@ const accuracyData = [
   { day: "Sun", mobileNet: 83, yolo: 95 },
 ];
 
-const barangayActions = [
-  { name: "Jaro", cleared: 45, pending: 12 },
-  { name: "Molo", cleared: 30, pending: 15 },
-  { name: "Mandurriao", cleared: 55, pending: 5 },
-  { name: "Lapaz", cleared: 20, pending: 18 },
-  { name: "Arevalo", cleared: 35, pending: 8 },
-];
+const barangayActions = Object.values(
+  mockAssignments.reduce((acc, curr) => {
+    const key = curr.assignee?.team ?? "Unassigned";
+    if (!acc[key]) {
+      acc[key] = { name: key, cleared: 0, pending: 0 };
+    }
+
+    if (curr.status === "Completed") {
+      acc[key].cleared += 1;
+    } else {
+      acc[key].pending += 1;
+    }
+
+    return acc;
+  }, {} as Record<string, { name: string; cleared: number; pending: number }>)
+);
 
 const simulationData = [
   { time: "Day 1", riskLevel: 20, mosquitoPop: 300 },

@@ -1,7 +1,7 @@
 import React from "react";
 import { MetricCard } from "../components/MetricCard";
 import { MapPin, Target, AlertTriangle, Radar, ListFilter, Map as MapIcon, ShieldAlert, Navigation } from "lucide-react";
-import { mockDashboardActivities, mockReports } from "../mockData";
+import { mockDashboardActivities, mockReports, mockAssignments } from "../mockData";
 import { MapContainer, TileLayer, CircleMarker, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import { useAuth } from "../App";
@@ -15,13 +15,29 @@ function MapUpdater({ center, zoom }: { center: [number, number]; zoom: number }
 
 export default function Dashboard() {
   const { role } = useAuth();
-  
+
   let center: [number, number] = [10.6953, 122.5447]; // Default Molo
   let zoomLevel = 13;
 
   if (role === 'brgy-calumpang') { center = [10.6975, 122.5367]; zoomLevel = 15; }
   if (role === 'brgy-sanjuan') { center = [10.6860, 122.5404]; zoomLevel = 15; }
   if (role === 'brgy-southfundidor') { center = [10.6883, 122.5312]; zoomLevel = 15; }
+
+  const openReports = mockReports.filter((r) => r.status === "OPEN");
+  const activeHotspots = openReports.length;
+  const personnelAssigned = new Set(
+    mockAssignments
+      .filter((a) => a.assignee)
+      .map((a) => a.assignee!.name)
+  ).size;
+
+  const topRiskReport = openReports.find((r) => r.risk === "High") ?? openReports[0];
+  const riskUpdateTitle = topRiskReport
+    ? `Elevated risk in ${topRiskReport.location}`
+    : "All sectors stable";
+  const riskUpdateSubtitle = topRiskReport
+    ? `Detected ${topRiskReport.classification.toLowerCase()} ${topRiskReport.timeAgo}.`
+    : "No open incidents currently.";
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-700 max-w-[1600px] w-full mx-auto pb-8 pt-2">
@@ -37,19 +53,17 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <MetricCard
           title="Active Hotspots"
-          value="24"
+          value={String(activeHotspots)}
           subtitle="Requiring immediate action"
           icon={<AlertTriangle size={24} strokeWidth={2.5} />}
-          trend="4%"
-          trendUp={false}
+          trend={activeHotspots > 0 ? `+${activeHotspots}%` : "0%"}
+          trendUp={activeHotspots > 0}
         />
         <MetricCard
-          title="Personnels Assigned"
-          value="15"
-          subtitle="Assignments currently active"
+          title="Field Personnel"
+          value={String(personnelAssigned)}
+          subtitle="Active deployment units"
           icon={<Target size={24} strokeWidth={2.5} />}
-          trend="2%"
-          trendUp={true}
         />
         <div className="col-span-1 md:col-span-2 glass-panel p-6 flex flex-col justify-between overflow-hidden relative group border border-primary-200 shadow-sm bg-gradient-to-br from-white to-primary-50">
           <div className="absolute top-0 right-0 w-48 h-48 bg-primary-400/10 rounded-full blur-[40px] -mr-16 -mt-16 pointer-events-none group-hover:bg-primary-500/20 transition-all duration-700" />
@@ -58,8 +72,8 @@ export default function Dashboard() {
           </div>
           <div className="relative z-10 flex items-end justify-between">
             <div>
-              <p className="text-4xl font-black text-slate-900 leading-none">Elevated Risk</p>
-              <p className="text-sm font-bold text-slate-500 mt-2">Mosquito spread in Calumpang, Molo due to increase in reports in the area. </p>
+              <p className="text-4xl font-black text-slate-900 leading-none">{riskUpdateTitle}</p>
+              <p className="text-sm font-bold text-slate-500 mt-2">{riskUpdateSubtitle}</p>
             </div>
             <button className="bg-primary-600 text-white font-bold px-5 py-2.5 rounded-xl shadow-[0_4px_14px_rgba(8,145,178,0.3)] hover:bg-primary-700 transition-colors">
               Execute Protocols

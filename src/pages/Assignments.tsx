@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { mockAssignments } from "../mockData";
+import { mockAssignments, mockReports, formatTimestamp } from "../mockData";
 import { Link } from "react-router-dom";
 import { Search, Filter, Plus, FileText, CheckCircle2, Users, ExternalLink, Eye, PenLine, UserPlus, X } from "lucide-react";
 
@@ -8,17 +8,31 @@ export default function Assignments() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newAssignee, setNewAssignee] = useState("");
 
+  const totalActive = tasks.length;
+  const awaitingSweep = tasks.filter((t) => t.status === "Assigned" || t.status === "In Progress").length;
+  const abatedSites = tasks.filter((t) => t.status === "Completed").length;
+  const deployedUnits = new Set(tasks.filter((t) => t.assignee).map((t) => t.assignee!.name)).size;
+  const totalUnits = 12;
+  const completionRate = totalActive > 0 ? Math.round((abatedSites / totalActive) * 100) : 0;
+
   const handleCreateMock = (e: React.FormEvent) => {
      e.preventDefault();
      if (!newAssignee) return;
-     
+
+     const report = mockReports[Math.floor(Math.random() * mockReports.length)];
+     const team = report.location.includes("Calumpang")
+       ? "Team Calumpang"
+       : report.location.includes("San Juan")
+       ? "Team San Juan"
+       : "Team South Fundidor";
+
      const newTask = {
-        id: `#AS-10${Math.floor(Math.random() * 90) + 10}`,
-        reportId: `#RP-${Math.floor(Math.random() * 900) + 100}`,
-        assignee: { name: newAssignee, team: "Team Delta", avatar: "https://i.pravatar.cc/150?u=delta" },
+        id: `#AS-${Math.floor(1000 + Math.random() * 9000)}`,
+        reportId: report.id,
+        assignee: { name: newAssignee, team, avatar: "https://i.pravatar.cc/150?u=" + encodeURIComponent(newAssignee) },
         status: "Assigned",
-        assignedDate: "Oct 25, 2023",
-        completion: "—"
+        assignedDate: formatTimestamp(new Date()),
+        completion: "—",
      };
 
      setTasks([newTask, ...tasks]);
@@ -57,8 +71,8 @@ export default function Assignments() {
                </div>
             </div>
             <div className="flex items-end justify-between">
-               <span className="text-4xl font-black text-slate-900 leading-none">{tasks.length + 119}</span>
-               <span className="text-xs font-bold text-emerald-600 flex items-center gap-1"><span className="text-[10px]">↗</span> +12% vs prev obj</span>
+               <span className="text-4xl font-black text-slate-900 leading-none">{totalActive}</span>
+               <span className="text-xs font-bold text-emerald-600 flex items-center gap-1"><span className="text-[10px]">↗</span> {completionRate}% completion rate</span>
             </div>
          </div>
          {/* ... (Other cards with identical robust layout update) ... */}
@@ -70,7 +84,7 @@ export default function Assignments() {
                </div>
             </div>
             <div className="flex flex-col justify-end">
-               <span className="text-4xl font-black text-slate-900 leading-none mb-1">28</span>
+               <span className="text-4xl font-black text-slate-900 leading-none mb-1">{awaitingSweep}</span>
                <span className="text-xs font-bold text-slate-400">Require onsite validation</span>
             </div>
          </div>
@@ -82,8 +96,8 @@ export default function Assignments() {
                </div>
             </div>
             <div className="flex flex-col justify-end">
-               <span className="text-4xl font-black text-slate-900 leading-none mb-1">15</span>
-               <span className="text-xs font-bold text-slate-400">94% target abatement rate</span>
+               <span className="text-4xl font-black text-slate-900 leading-none mb-1">{abatedSites}</span>
+               <span className="text-xs font-bold text-slate-400">{completionRate}% target abatement rate</span>
             </div>
          </div>
          <div className="glass p-5 flex flex-col justify-between rounded-2xl shadow-sm border border-slate-100 bg-white">
@@ -94,7 +108,7 @@ export default function Assignments() {
                </div>
             </div>
             <div className="flex flex-col justify-end">
-               <span className="text-4xl font-black text-slate-900 leading-none mb-1">8<span className="text-slate-400 font-medium">/12</span></span>
+               <span className="text-4xl font-black text-slate-900 leading-none mb-1">{deployedUnits}<span className="text-slate-400 font-medium">/{totalUnits}</span></span>
                <span className="text-xs font-bold text-slate-400">Operational field cohorts</span>
             </div>
          </div>
