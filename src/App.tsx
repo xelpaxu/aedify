@@ -1,7 +1,10 @@
-import React, { createContext, useContext, useState } from "react";
+import { createContext, useContext, useState } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { ConvexReactClient, ConvexProvider } from "convex/react";
 import { RootLayout } from "./root-layout";
 import Login from "./pages/Login";
+
+const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL);
 
 export type Role = "lgu-admin" | "brgy-calumpang" | "brgy-sanjuan" | "brgy-southfundidor" | "sys-admin";
 
@@ -26,13 +29,15 @@ export default function App() {
   const logout = () => setRole(null);
 
   return (
-    <AuthContext.Provider value={{ role, login, logout }}>
-      <BrowserRouter>
-        <Routes>
-          <Route path="/login" element={!role ? <Login /> : <Navigate to="/dashboard" replace />} />
-          <Route path="/*" element={role ? <RootLayout /> : <Navigate to="/login" replace />} />
-        </Routes>
-      </BrowserRouter>
-    </AuthContext.Provider>
+    <ConvexProvider client={convex}>
+      <AuthContext.Provider value={{ role, login, logout }}>
+        <BrowserRouter>
+          <Routes>
+            <Route path="/login" element={!role ? <Login /> : <Navigate to="/dashboard" replace />} />
+            <Route path="/*" element={role ? <RootLayout /> : <Navigate to="/login" replace />} />
+          </Routes>
+        </BrowserRouter>
+      </AuthContext.Provider>
+    </ConvexProvider>
   );
 }

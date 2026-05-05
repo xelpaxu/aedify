@@ -1,7 +1,7 @@
 import React from 'react';
 import { useAuth, Role } from '../App';
 import { ShieldCheck, Map, Users, Activity } from 'lucide-react';
-import logo from "../../public/assets/images/favicon.ico";
+import logo from "../../assets/images/favicon.ico";
 
 export default function Login() {
   const { login } = useAuth();

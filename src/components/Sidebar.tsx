@@ -2,6 +2,7 @@ import React from "react";
 import { NavLink } from "react-router-dom";
 import { LayoutDashboard, PieChart, ClipboardList, Map, Briefcase, Settings, Activity, LogOut } from "lucide-react";
 import { useAuth } from "../App";
+import logo from "../../assets/images/Aedify.png";
 
 const navItems = [
   { path: "/dashboard", label: "Dashboard", icon: <LayoutDashboard size={20} /> },
@@ -25,8 +26,12 @@ export const Sidebar: React.FC = () => {
       <div className="absolute inset-0 bg-white/40 backdrop-blur-3xl border-r border-white/80 shadow-[12px_0_32px_-12px_rgba(0,0,0,0.05)] pointer-events-none -z-10" />
 
       <div className="px-8 mb-12 flex items-center gap-4">
-        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center text-white shadow-lg shadow-primary-600/30 ring-4 ring-primary-50">
-          <Activity size={26} strokeWidth={2.5} />
+        <div className="relative w-12 h-12 rounded-2xl bg-white flex items-center justify-center overflow-hidden shadow-lg shadow-primary-600/30 ring-4 ring-primary-50">
+          <img 
+            src={logo} 
+            alt="Aedify Logo" 
+            className="w-full h-full object-contain p-2" 
+          />
         </div>
         <div>
           <h1 className="text-[26px] font-extrabold tracking-tight text-slate-900 leading-none mb-1">Aedify.</h1>

@@ -9,7 +9,7 @@ import AssignmentsPage from "./pages/Assignments";
 import SettingsPage from "./pages/Settings";
 import { Search, Bell, ChevronDown } from "lucide-react";
 import { useAuth } from "./App";
-import profile from "../public/assets/images/profile.jpg";
+import profile from "../assets/images/Aedify.png";
 
 export const RootLayout: React.FC = () => {
   const { role } = useAuth();
