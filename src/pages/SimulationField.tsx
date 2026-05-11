@@ -1,3 +1,23 @@
+/**
+ * SimulationField.tsx — Aedify LGU Dashboard
+ * Agent-Based Mosquito Spread Simulation UI · Molo District, Iloilo City
+ *
+ * Calls POST http://localhost:5000/simulate (see abm_server.py)
+ *
+ * ─── PLACEHOLDERS ────────────────────────────────────────────────────────────
+ *  [PLACEHOLDER: REPORTS]      — reports prop currently passed from parent.
+ *                                In production, fetch from your NoSQL DB
+ *                                (verified reports collection, ERD Fig. 4).
+ *  [PLACEHOLDER: LOGO]         — replace logo import with your actual asset path.
+ *  [PLACEHOLDER: ABM_URL]      — change ABM_URL to your deployed FastAPI host.
+ *  [PLACEHOLDER: NOTIFICATION] — onSend() currently just marks UI state.
+ *                                Wire to your push notification service
+ *                                (Feedback Layer in Software Architecture Fig. 3).
+ *  [PLACEHOLDER: MAP_CENTER]   — MOLO_CENTER is hardcoded; derive from barangay
+ *                                selection if you expand to other districts.
+ * ─────────────────────────────────────────────────────────────────────────────
+ */
+
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { MapContainer, TileLayer, CircleMarker, Marker, useMap, Popup } from "react-leaflet";
 import L, { LatLngTuple, DivIcon } from "leaflet";
@@ -7,6 +27,8 @@ import {
   Bell, Layers, Play, RotateCcw, Loader2,
   Bug, MapPin, Activity, Users, ShieldAlert
 } from "lucide-react";
+
+// [PLACEHOLDER: LOGO] — replace with your actual logo import
 import logo from '../../assets/images/Aedify.png';
 
 // ─── Inject global CSS once ───────────────────────────────────────────────────
@@ -58,6 +80,13 @@ interface SimReport {
   status: "CRITICAL" | "HIGH" | "MODERATE";
   verified: boolean;
   accuracy?: number;
+  // Convex report fields
+  userId?: string;
+  userName?: string;
+  description?: string;
+  detections?: string;
+  reasoning?: string;
+  imageUri?: string;
 }
 
 interface HotspotPrediction {
@@ -77,11 +106,20 @@ interface SimulationResult {
   hotspot_predictions: HotspotPrediction[];
   summary: string;
   risk_index: number;
+  movement_analysis?: {
+    pattern: string;
+    dispersal_speed_km_day: number;
+    max_range_km: number;
+    concentration_ratio: number;
+    highest_density_location: string;
+    secondary_spread: boolean;
+  };
+  ai_insights?: string;
 }
 
 interface SimulationFieldProps {
   onClose: () => void;
-  reports: SimReport[];
+  reports: SimReport[]; // [PLACEHOLDER: REPORTS] — pass verified reports from your DB query
 }
 
 interface TravelingMosq {
@@ -125,26 +163,18 @@ function makeMosqIcon(color: string, glowColor: string): DivIcon {
   <svg class="mosq-icon-svg" width="${s}" height="${s}" viewBox="0 0 64 64"
        xmlns="http://www.w3.org/2000/svg"
        style="filter:drop-shadow(0 0 7px ${glowColor});">
-    <!-- abdomen -->
     <ellipse cx="32" cy="37" rx="5.5" ry="13" fill="${color}"/>
-    <!-- thorax -->
     <ellipse cx="32" cy="24" rx="4.5" ry="5.5" fill="${color}"/>
-    <!-- head -->
     <circle cx="32" cy="17" r="4.5" fill="${color}"/>
-    <!-- proboscis -->
     <path d="M32 21 Q31 14 32 9" stroke="${color}" stroke-width="1.3" fill="none" stroke-linecap="round"/>
-    <!-- antennae -->
     <path d="M30 14 Q25 7 22 4"  stroke="${color}" stroke-width="1.1" fill="none" stroke-linecap="round"/>
     <path d="M34 14 Q39 7 42 4"  stroke="${color}" stroke-width="1.1" fill="none" stroke-linecap="round"/>
-    <!-- left wing -->
     <ellipse cx="18" cy="27" rx="13" ry="5.5" fill="rgba(255,255,255,0.5)"
              stroke="${color}" stroke-width="0.8"
              style="animation:mosq-wings-l 0.15s linear infinite alternate;transform-origin:31px 27px;"/>
-    <!-- right wing -->
     <ellipse cx="46" cy="27" rx="13" ry="5.5" fill="rgba(255,255,255,0.5)"
              stroke="${color}" stroke-width="0.8"
              style="animation:mosq-wings-r 0.15s linear infinite alternate-reverse;transform-origin:33px 27px;"/>
-    <!-- legs -->
     <g stroke="${color}" stroke-width="1.1" stroke-linecap="round" opacity="0.7">
       <line x1="27" y1="32" x2="14" y2="38"/><line x1="14" y1="38" x2="10" y2="43"/>
       <line x1="27" y1="37" x2="13" y2="44"/><line x1="13" y1="44" x2="9"  y2="50"/>
@@ -153,7 +183,6 @@ function makeMosqIcon(color: string, glowColor: string): DivIcon {
       <line x1="37" y1="37" x2="51" y2="44"/><line x1="51" y1="44" x2="55" y2="50"/>
       <line x1="37" y1="42" x2="49" y2="50"/><line x1="49" y1="50" x2="53" y2="56"/>
     </g>
-    <!-- stripes -->
     <g opacity="0.25">
       <ellipse cx="32" cy="34" rx="4.5" ry="1.2" fill="white"/>
       <ellipse cx="32" cy="39" rx="4"   ry="1.2" fill="white"/>
@@ -161,24 +190,12 @@ function makeMosqIcon(color: string, glowColor: string): DivIcon {
     </g>
   </svg>
 </div>`;
-
-  return L.divIcon({
-    html,
-    className: "",
-    iconSize:   [s, s],
-    iconAnchor: [s/2, s/2],
-    popupAnchor:[0, -s/2],
-  });
+  return L.divIcon({ html, className: "", iconSize: [s, s], iconAnchor: [s/2, s/2], popupAnchor: [0, -s/2] });
 }
 
 // ─── Canvas travel layer ──────────────────────────────────────────────────────
 
-interface TravelLayerProps {
-  travelers: TravelingMosq[];
-  onAllDone: () => void;
-}
-
-function TravelLayer({ travelers, onAllDone }: TravelLayerProps) {
+function TravelLayer({ travelers, onAllDone }: { travelers: TravelingMosq[]; onAllDone: () => void }) {
   const map = useMap();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rafRef    = useRef<number>(0);
@@ -187,43 +204,31 @@ function TravelLayer({ travelers, onAllDone }: TravelLayerProps) {
     if (!travelers.length) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
-
     const container = map.getContainer();
     canvas.width  = container.clientWidth;
     canvas.height = container.clientHeight;
-
     const ctx = canvas.getContext("2d")!;
-
     const toXY = (lat: number, lng: number) => {
       const p = map.latLngToContainerPoint([lat, lng]);
       return { x: p.x, y: p.y };
     };
-
     function frame() {
       ctx.clearRect(0, 0, canvas!.width, canvas!.height);
       const now = performance.now();
       let allDone = true;
-
       for (const t of travelers) {
         const elapsed = Math.max(0, now - t.startTime);
         const raw     = Math.min(1, elapsed / t.duration);
         const prog    = easeInOut(raw);
         if (raw < 1) allDone = false;
-
         const from = toXY(t.fromLat, t.fromLng);
         const to   = toXY(t.toLat,   t.toLng);
-
-        // Arc: sine lift
         const cx = from.x + (to.x - from.x) * prog;
         const cy = from.y + (to.y - from.y) * prog - Math.sin(prog * Math.PI) * 65;
-
-        // Direction for rotation
         const np   = Math.min(1, prog + 0.02);
         const nx   = from.x + (to.x - from.x) * easeInOut(np);
         const ny   = from.y + (to.y - from.y) * easeInOut(np) - Math.sin(easeInOut(np) * Math.PI) * 65;
         const angle = Math.atan2(ny - cy, nx - cx) + Math.PI / 2;
-
-        // Trail dots
         for (let i = 10; i >= 1; i--) {
           const tp = Math.max(0, prog - (i / 10) * 0.1);
           const tx = from.x + (to.x - from.x) * easeInOut(tp);
@@ -234,34 +239,24 @@ function TravelLayer({ travelers, onAllDone }: TravelLayerProps) {
           ctx.fillStyle = t.color + alpha;
           ctx.fill();
         }
-
-        // Mosquito body (canvas, simplified)
         ctx.save();
         ctx.translate(cx, cy);
         ctx.rotate(angle);
         ctx.shadowColor = t.glow;
         ctx.shadowBlur  = 12;
-
-        // abdomen
         ctx.beginPath();
         ctx.ellipse(0, 5, 3.5, 10, 0, 0, Math.PI*2);
         ctx.fillStyle = t.color;
         ctx.fill();
-
-        // head
         ctx.beginPath();
         ctx.arc(0, -7, 3.5, 0, Math.PI*2);
         ctx.fill();
-
-        // proboscis
         ctx.beginPath();
         ctx.moveTo(0, -10);
         ctx.lineTo(0, -17);
         ctx.strokeStyle = t.color;
         ctx.lineWidth = 1.2;
         ctx.stroke();
-
-        // wings (flap with time)
         const flap = Math.sin(now * 0.045) * 0.35;
         ctx.shadowBlur = 0;
         ctx.globalAlpha = 0.55;
@@ -273,10 +268,8 @@ function TravelLayer({ travelers, onAllDone }: TravelLayerProps) {
         ctx.ellipse(9, -1, 9, 4.5, flap, 0, Math.PI*2);
         ctx.fill();
         ctx.globalAlpha = 1;
-
         ctx.restore();
       }
-
       if (allDone) {
         ctx.clearRect(0, 0, canvas!.width, canvas!.height);
         onAllDone();
@@ -284,7 +277,6 @@ function TravelLayer({ travelers, onAllDone }: TravelLayerProps) {
       }
       rafRef.current = requestAnimationFrame(frame);
     }
-
     rafRef.current = requestAnimationFrame(frame);
     return () => {
       cancelAnimationFrame(rafRef.current);
@@ -294,42 +286,71 @@ function TravelLayer({ travelers, onAllDone }: TravelLayerProps) {
 
   return (
     <canvas ref={canvasRef}
-      style={{ position:"absolute", top:0, left:0, zIndex:450, pointerEvents:"none",
-               width:"100%", height:"100%" }} />
+      style={{ position:"absolute", top:0, left:0, zIndex:450, pointerEvents:"none", width:"100%", height:"100%" }} />
   );
 }
 
-// ─── Inner map scene (needs useMap context) ────────────────────────────────────
+// ─── Map scene ────────────────────────────────────────────────────────────────
 
-interface MapSceneProps {
-  reports: SimReport[];
-  mapType: "street"|"satellite";
-  visibleHotspots: HotspotPrediction[];
-  travelers: TravelingMosq[];
-  onTravelDone: () => void;
-}
-
-function MapScene({ reports, mapType, visibleHotspots, travelers, onTravelDone }: MapSceneProps) {
+function MapScene({ reports, mapType, visibleHotspots, travelers, onTravelDone }:
+  { reports: SimReport[]; mapType: "street"|"satellite"; visibleHotspots: HotspotPrediction[];
+    travelers: TravelingMosq[]; onTravelDone: () => void }) {
   return (
     <>
       {mapType === "street"
         ? <TileLayer attribution="&copy; Stadia Maps" url="https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png"/>
         : <TileLayer attribution="&copy; Esri"        url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"/>
       }
-
-      {/* Source reports */}
+      {/* [PLACEHOLDER: REPORTS] Source report markers from your DB */}
       {reports.map((rpt) => (
         <CircleMarker key={rpt._id}
           center={[rpt.lat, rpt.lng] as LatLngTuple} radius={6}
           pathOptions={{ color:"white", fillColor: rpt.verified ? "#10b981" : "#6b7280", fillOpacity:0.9, weight:1.5 }}>
           <Popup>
-            <p className="font-bold text-xs">{rpt.locationName}</p>
-            <p className="text-[10px] text-gray-500">{rpt.verified ? "✅ Verified" : "⏳ Unverified"}</p>
+            <div className="w-48 bg-slate-50 rounded-lg overflow-hidden">
+              <div className="bg-gradient-to-r from-cyan-500 to-blue-600 px-3 py-2">
+                <p className="font-bold text-xs text-white">{rpt.locationName || "Unknown Location"}</p>
+              </div>
+              <div className="p-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold text-slate-600">Status:</span>
+                  <span className={`text-[9px] font-black px-2 py-0.5 rounded ${
+                    rpt.status === "CRITICAL" ? "bg-red-100 text-red-700" :
+                    rpt.status === "HIGH" ? "bg-orange-100 text-orange-700" :
+                    "bg-amber-100 text-amber-700"
+                  }`}>{rpt.status}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold text-slate-600">Verified:</span>
+                  <span className="text-[9px] font-bold">{rpt.verified ? "✅ Yes" : "⏳ No"}</span>
+                </div>
+                {rpt.accuracy && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-bold text-slate-600">Accuracy:</span>
+                    <span className="text-[9px] font-bold text-cyan-600">{Math.round(rpt.accuracy * 100)}%</span>
+                  </div>
+                )}
+                {rpt.userName && (
+                  <div className="border-t pt-2 mt-2">
+                    <span className="text-[9px] font-bold text-slate-500">Reporter: </span>
+                    <span className="text-[9px] text-slate-700">{rpt.userName}</span>
+                  </div>
+                )}
+                {rpt.detections && (
+                  <div className="text-[9px] text-slate-600 italic">
+                    Detections: {rpt.detections}
+                  </div>
+                )}
+                {rpt.description && (
+                  <div className="text-[9px] text-slate-600 line-clamp-2">
+                    {rpt.description}
+                  </div>
+                )}
+              </div>
+            </div>
           </Popup>
         </CircleMarker>
       ))}
-
-      {/* Revealed predicted hotspots — mosquito icons */}
       {visibleHotspots.map((hp, i) => (
         <React.Fragment key={i}>
           <CircleMarker
@@ -346,14 +367,13 @@ function MapScene({ reports, mapType, visibleHotspots, travelers, onTravelDone }
           </Marker>
         </React.Fragment>
       ))}
-
-      {/* Flying mosquito canvas */}
       {travelers.length > 0 && <TravelLayer travelers={travelers} onAllDone={onTravelDone}/>}
     </>
   );
 }
 
 // ─── Notification Modal ────────────────────────────────────────────────────────
+// [PLACEHOLDER: NOTIFICATION] — onSend wires to push notification service
 
 function NotificationModal({ hotspot, onClose, onSend }:
   { hotspot: HotspotPrediction; onClose: () => void; onSend: () => void }) {
@@ -409,7 +429,10 @@ Unverified reports in your area remain unaddressed. Community action is our best
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
+// [PLACEHOLDER: MAP_CENTER] — hardcoded Molo center; derive from barangay selection if needed
 const MOLO_CENTER: LatLngTuple = [10.6953, 122.5447];
+
+// [PLACEHOLDER: ABM_URL] — change to your deployed FastAPI host in production
 const ABM_URL = "http://localhost:5000";
 
 export default function SimulationField({ onClose, reports }: SimulationFieldProps) {
@@ -423,8 +446,9 @@ export default function SimulationField({ onClose, reports }: SimulationFieldPro
   const [travelers,       setTravelers]       = useState<TravelingMosq[]>([]);
   const [visibleHotspots, setVisibleHotspots] = useState<HotspotPrediction[]>([]);
   const [isAnimating,     setIsAnimating]     = useState(false);
+  const [error,           setError]           = useState<string | null>(null);
+  const [progress,        setProgress]        = useState(0);
 
-  // Keep a stable ref to the latest result for use inside callbacks
   const resultRef = useRef<SimulationResult | null>(null);
   useEffect(() => { resultRef.current = result; }, [result]);
 
@@ -434,68 +458,133 @@ export default function SimulationField({ onClose, reports }: SimulationFieldPro
     setTravelers([]);
     setVisibleHotspots([]);
     setIsAnimating(false);
+    setError(null);
+    setProgress(0);
 
     let simResult: SimulationResult;
     try {
       const payload = {
         days: Number(days),
         reports: (reports || []).map((r) => ({
-          id: String(r._id), lat: Number(r.lat), lng: Number(r.lng),
-          status: r.status, verified: Boolean(r.verified),
-          accuracy: Number(r.accuracy ?? 85),
+          id: String(r._id),
+          lat: Number(r.lat),
+          lng: Number(r.lng),
+          status: r.status,
+          verified: Boolean(r.verified),
+          accuracy: Number(r.accuracy ?? 0.85),
         })),
       };
-      const res = await fetch(`${ABM_URL}/simulate`, {
-        method:"POST", headers:{"Content-Type":"application/json"},
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) throw new Error("Server error");
-      simResult = await res.json();
-    } catch {
+      
+      // Try streaming endpoint first for real-time updates
+      try {
+        const res = await fetch(`${ABM_URL}/simulate-stream`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        
+        if (!res.ok) throw new Error(`Server error ${res.status}`);
+        
+        const reader = res.body?.getReader();
+        if (reader) {
+          const decoder = new TextDecoder();
+          let buffer = "";
+          
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split("\n");
+            buffer = lines[lines.length - 1];
+            
+            for (let i = 0; i < lines.length - 1; i++) {
+              if (lines[i].startsWith("data: ")) {
+                try {
+                  const event = JSON.parse(lines[i].slice(6));
+                  setProgress(event.progress || 0);
+                  
+                  if (event.stage === "complete" && event.result) {
+                    simResult = event.result;
+                  }
+                } catch (e) {}
+              }
+            }
+          }
+        }
+      } catch {
+        // Fallback to standard endpoint
+        const res = await fetch(`${ABM_URL}/simulate`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        if (!res.ok) throw new Error(`Server error ${res.status}`);
+        simResult = await res.json();
+      }
+    } catch (err) {
+      // ── FALLBACK DATA ─────────────────────────────────────────────────────
+      console.warn("ABM server unreachable, using fallback data:", err);
+      setError("ABM server offline — showing demo data");
       simResult = {
         day: days,
-        weather: { temp_c:32.4, humidity:81, wind_kph:12.3, condition:"Partly Cloudy" },
-        total_agents: 142 + days*38,
+        weather: { temp_c: 32.4, humidity: 81, wind_kph: 12.3, condition: "Partly Cloudy" },
+        total_agents: 142 + days * 38,
         hotspot_predictions: [
-          { lat:10.6889, lng:122.5441, risk_score:0.91, risk_level:"CRITICAL", agent_count:67,
-            reasoning:"High humidity + 3 unverified stagnant water reports within 200m. Optimal breeding conditions forecast for next 48 hrs.",
-            location_estimate:"San Juan, Molo" },
-          { lat:10.685,  lng:122.5376, risk_score:0.74, risk_level:"HIGH",     agent_count:43,
-            reasoning:"Moderate rainfall accumulation + open drainage near market. Agent density trending upward.",
-            location_estimate:"Calumpang, Molo" },
-          { lat:10.6901, lng:122.5319, risk_score:0.58, risk_level:"MODERATE", agent_count:32,
-            reasoning:"Low wind speed reduces dispersal. Uncleaned lot reported nearby increases stagnation risk.",
-            location_estimate:"South Fundidor, Molo" },
+          {
+            lat: 10.6889, lng: 122.5441,
+            risk_score: 0.91, risk_level: "CRITICAL", agent_count: 67,
+            reasoning: "High humidity + 3 unverified stagnant water reports within 200m. Optimal breeding conditions forecast for next 48 hrs.",
+            location_estimate: "San Juan, Molo",
+          },
+          {
+            lat: 10.6850, lng: 122.5376,
+            risk_score: 0.74, risk_level: "HIGH", agent_count: 43,
+            reasoning: "Moderate rainfall accumulation + open drainage near market. Agent density trending upward.",
+            location_estimate: "Calumpang, Molo",
+          },
+          {
+            lat: 10.6901, lng: 122.5319,
+            risk_score: 0.58, risk_level: "MODERATE", agent_count: 32,
+            reasoning: "Low wind speed reduces dispersal. Uncleaned lot reported nearby increases stagnation risk.",
+            location_estimate: "South Fundidor, Molo",
+          },
         ],
         summary: `After ${days} day(s), mosquito agents have spread primarily toward low-drainage zones in San Juan. Warm temperatures (32°C) and high humidity (81%) create near-ideal breeding conditions. Immediate intervention recommended in San Juan and Calumpang sectors.`,
-        risk_index: Math.min(0.95, 0.55 + days*0.08),
+        risk_index: Math.min(0.95, 0.55 + days * 0.08),
+        movement_analysis: {
+          pattern: "Rapid Multiplication & Local Spread",
+          dispersal_speed_km_day: 0.35,
+          max_range_km: 1.23,
+          concentration_ratio: 0.47,
+          highest_density_location: "San Juan, Molo",
+          secondary_spread: true,
+        },
       };
     }
 
-    setResult(simResult);
+    setResult(simResult!);
     setIsRunning(false);
     setActiveTab("map");
 
-    // Build travelers: for each hotspot, pick up to 3 nearest source reports
     const seedPoints = reports.length > 0 ? reports : [{
-      _id:"seed", lat:MOLO_CENTER[0], lng:MOLO_CENTER[1],
-      locationName:"", status:"CRITICAL" as const, verified:true,
+      _id: "seed", lat: MOLO_CENTER[0], lng: MOLO_CENTER[1],
+      locationName: "", status: "CRITICAL" as const, verified: true,
     }];
 
     const now = performance.now();
-    const newTravelers: TravelingMosq[] = simResult.hotspot_predictions.flatMap((hp, hi) => {
-      const sorted = [...seedPoints].sort((a,b) =>
-        Math.hypot(a.lat-hp.lat, a.lng-hp.lng) - Math.hypot(b.lat-hp.lat, b.lng-hp.lng)
-      ).slice(0, 3);
-
+    const newTravelers: TravelingMosq[] = simResult!.hotspot_predictions.flatMap((hp, hi) => {
+      const sorted = [...seedPoints]
+        .sort((a, b) => Math.hypot(a.lat-hp.lat, a.lng-hp.lng) - Math.hypot(b.lat-hp.lat, b.lng-hp.lng))
+        .slice(0, 3);
       return sorted.map((src, si) => ({
-        id:        `t-${hi}-${si}`,
-        fromLat:   src.lat, fromLng: src.lng,
-        toLat:     hp.lat,  toLng:   hp.lng,
-        color:     riskColor(hp.risk_level),
-        glow:      riskGlow(hp.risk_level),
-        startTime: now + hi*500 + si*180,
-        duration:  1700 + Math.random()*700,
+        id: `t-${hi}-${si}`,
+        fromLat: src.lat, fromLng: src.lng,
+        toLat: hp.lat,    toLng: hp.lng,
+        color: riskColor(hp.risk_level),
+        glow:  riskGlow(hp.risk_level),
+        startTime: now + hi * 500 + si * 180,
+        duration: 1700 + Math.random() * 700,
       }));
     });
 
@@ -503,7 +592,6 @@ export default function SimulationField({ onClose, reports }: SimulationFieldPro
     setTravelers(newTravelers);
   }, [days, reports]);
 
-  // Called by TravelLayer when canvas animation completes
   const handleTravelDone = useCallback(() => {
     setTravelers([]);
     setIsAnimating(false);
@@ -511,7 +599,6 @@ export default function SimulationField({ onClose, reports }: SimulationFieldPro
     preds.forEach((hp, i) => {
       setTimeout(() => {
         setVisibleHotspots((prev) => {
-          // avoid duplicates
           if (prev.some(v => v.lat === hp.lat && v.lng === hp.lng)) return prev;
           return [...prev, hp];
         });
@@ -520,7 +607,7 @@ export default function SimulationField({ onClose, reports }: SimulationFieldPro
   }, []);
 
   const reset = () => {
-    setResult(null); setTravelers([]); setVisibleHotspots([]); setIsAnimating(false);
+    setResult(null); setTravelers([]); setVisibleHotspots([]); setIsAnimating(false); setError(null); setProgress(0);
   };
 
   const riskIndexColor = (idx: number) =>
@@ -533,7 +620,8 @@ export default function SimulationField({ onClose, reports }: SimulationFieldPro
       <div className="flex items-center justify-between px-8 py-4 border-b border-white/5 bg-slate-900/80 backdrop-blur-xl shrink-0">
         <div className="flex items-center gap-4">
           <div className="w-9 h-9 rounded-2xl bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center shadow-lg shadow-blue-900/40">
-            <img src={logo} alt="logo" className="text-white"/>
+            {/* [PLACEHOLDER: LOGO] */}
+            <img src={logo} alt="Aedify" className="w-full h-full object-contain rounded-2xl"/>
           </div>
           <div>
             <h1 className="text-white font-black text-lg tracking-tight leading-none">Simulation Field</h1>
@@ -541,12 +629,25 @@ export default function SimulationField({ onClose, reports }: SimulationFieldPro
           </div>
         </div>
         <div className="flex items-center gap-3">
+          {error && (
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/30">
+              <span className="text-[10px] font-black uppercase tracking-widest text-amber-400">{error}</span>
+            </div>
+          )}
           {result && (
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/5 border border-white/10">
               <Activity size={12} className={riskIndexColor(result.risk_index)}/>
               <span className="text-[10px] font-black uppercase tracking-widest text-slate-300">
                 Risk Index: <span className={riskIndexColor(result.risk_index)}>{Math.round(result.risk_index*100)}%</span>
               </span>
+            </div>
+          )}
+          {isRunning && (
+            <div className="flex items-center gap-3 px-3 py-1.5 rounded-xl bg-cyan-500/10 border border-cyan-500/30">
+              <div className="w-20 h-1 bg-slate-700 rounded-full overflow-hidden">
+                <div className="h-full bg-gradient-to-r from-cyan-500 to-blue-500 rounded-full transition-all" style={{width: `${progress}%`}}/>
+              </div>
+              <span className="text-[10px] font-black uppercase tracking-widest text-cyan-400">{progress}%</span>
             </div>
           )}
           {isAnimating && (
@@ -616,9 +717,9 @@ export default function SimulationField({ onClose, reports }: SimulationFieldPro
           <div className="p-6 border-b border-white/5">
             <button onClick={runSimulation} disabled={isRunning||isAnimating}
               className="w-full py-4 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 disabled:opacity-60 text-white text-[11px] font-black uppercase tracking-widest shadow-xl shadow-blue-900/40 transition-all active:scale-95 flex items-center justify-center gap-2">
-              {isRunning   ? <><Loader2 size={14} className="animate-spin"/>Running ABM…</>
-               : isAnimating? <><Bug size={14} className="animate-bounce"/>🦟 Agents Traveling…</>
-               :              <><Play size={14} fill="currentColor"/>Run Simulation</>}
+              {isRunning    ? <><Loader2 size={14} className="animate-spin"/>Running ABM…</>
+               : isAnimating ? <><Bug size={14} className="animate-bounce"/>🦟 Agents Traveling…</>
+               :               <><Play size={14} fill="currentColor"/>Run Simulation</>}
             </button>
             {result && !isAnimating && (
               <button onClick={reset}
@@ -631,13 +732,16 @@ export default function SimulationField({ onClose, reports }: SimulationFieldPro
           {/* Weather */}
           {result && (
             <div className="p-6 border-b border-white/5">
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Weather · Day {result.day}</p>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">
+                Weather · Day {result.day}
+                <span className="ml-2 text-slate-600 normal-case font-medium">{result.weather.condition}</span>
+              </p>
               <div className="grid grid-cols-2 gap-2">
                 {[
-                  { icon:<Thermometer size={14} className="text-orange-400 shrink-0"/>, value:`${result.weather.temp_c}°C`,    label:"Temp"    },
-                  { icon:<Droplets    size={14} className="text-blue-400 shrink-0"/>,   value:`${result.weather.humidity}%`,    label:"Humidity"},
-                  { icon:<Wind        size={14} className="text-cyan-400 shrink-0"/>,   value:`${result.weather.wind_kph} kph`, label:"Wind"    },
-                  { icon:<Bug         size={14} className="text-rose-400 shrink-0"/>,   value:`${result.total_agents}`,         label:"Agents"  },
+                  { icon:<Thermometer size={14} className="text-orange-400 shrink-0"/>, value:`${result.weather.temp_c}°C`,    label:"Temp"     },
+                  { icon:<Droplets    size={14} className="text-blue-400 shrink-0"/>,   value:`${result.weather.humidity}%`,    label:"Humidity" },
+                  { icon:<Wind        size={14} className="text-cyan-400 shrink-0"/>,   value:`${result.weather.wind_kph} kph`, label:"Wind"     },
+                  { icon:<Bug         size={14} className="text-rose-400 shrink-0"/>,   value:`${result.total_agents}`,         label:"Agents"   },
                 ].map(item => (
                   <div key={item.label} className="p-3 rounded-2xl bg-slate-800 border border-white/5 flex items-center gap-2">
                     {item.icon}
@@ -678,6 +782,7 @@ export default function SimulationField({ onClose, reports }: SimulationFieldPro
                         🦟 <MapPin size={10} className="text-slate-400"/> {hp.location_estimate}
                       </p>
                       <p className="text-[9px] text-slate-400 font-medium line-clamp-2 mb-3">{hp.reasoning}</p>
+                      {/* [PLACEHOLDER: NOTIFICATION] — onSend wires to push notification service */}
                       <button
                         onClick={() => setNotifyTarget(hp)}
                         disabled={sentNotifs.has(hp.location_estimate) || !isVisible}
@@ -737,11 +842,11 @@ export default function SimulationField({ onClose, reports }: SimulationFieldPro
               <div className="absolute top-6 right-6 z-[400] bg-slate-900/90 backdrop-blur-md rounded-2xl p-4 border border-white/10 space-y-2">
                 <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3">Legend</p>
                 {[
-                  { color:"#10b981", label:"Verified Report",     shape:"circle"  },
-                  { color:"#6b7280", label:"Unverified Report",   shape:"circle"  },
-                  { color:"#ef4444", label:"🦟 Critical Hotspot", shape:"square"  },
-                  { color:"#f97316", label:"🦟 High Hotspot",     shape:"square"  },
-                  { color:"#fbbf24", label:"🦟 Moderate Hotspot", shape:"square"  },
+                  { color:"#10b981", label:"Verified Report",     shape:"circle" },
+                  { color:"#6b7280", label:"Unverified Report",   shape:"circle" },
+                  { color:"#ef4444", label:"🦟 Critical Hotspot", shape:"square" },
+                  { color:"#f97316", label:"🦟 High Hotspot",     shape:"square" },
+                  { color:"#fbbf24", label:"🦟 Moderate Hotspot", shape:"square" },
                 ].map(l => (
                   <div key={l.label} className="flex items-center gap-2">
                     <div className={`w-3 h-3 ${l.shape==="circle"?"rounded-full":"rounded-sm"} border-2 border-white/30`}
@@ -765,7 +870,11 @@ export default function SimulationField({ onClose, reports }: SimulationFieldPro
                   <div className="bg-slate-900 rounded-3xl p-8 text-center border border-cyan-500/30 shadow-2xl">
                     <Loader2 size={36} className="text-cyan-400 animate-spin mx-auto mb-4"/>
                     <p className="text-white font-black">Running ABM for {days} day{days!==1?"s":""}…</p>
-                    <p className="text-slate-400 text-xs mt-1">Dispatching {reports.length} seed agents</p>
+                    <p className="text-slate-400 text-xs mt-1">Dispatching {reports.length} seed agents from {reports.filter(r=>r.verified).length} verified sites</p>
+                    <div className="mt-4 w-48 h-2 bg-slate-700 rounded-full overflow-hidden mx-auto">
+                      <div className="h-full bg-gradient-to-r from-cyan-500 to-blue-500 transition-all" style={{width: `${progress}%`}}/>
+                    </div>
+                    <p className="text-cyan-400 text-[10px] font-black mt-2 uppercase">{progress}% Complete</p>
                   </div>
                 </div>
               )}
@@ -782,22 +891,65 @@ export default function SimulationField({ onClose, reports }: SimulationFieldPro
                   </div>
                 </div>
               ) : (
-                <div className="max-w-2xl space-y-6">
+                <div className="max-w-4xl space-y-6">
                   <div>
-                    <h2 className="text-white font-black text-2xl tracking-tight mb-1">Simulation Summary</h2>
+                    <h2 className="text-white font-black text-2xl tracking-tight mb-1">Simulation Analysis</h2>
                     <p className="text-slate-400 text-sm">Day {result.day} Projection · {result.total_agents} Agents Modeled</p>
                   </div>
+
+                  {/* Movement Analysis */}
+                  {result.movement_analysis && (
+                    <div className="p-5 rounded-2xl bg-gradient-to-br from-cyan-900/30 to-blue-900/30 border border-cyan-500/30">
+                      <p className="text-[10px] font-black text-cyan-400 uppercase tracking-widest mb-3 flex items-center gap-1.5">
+                        <Bug size={10}/> Movement Pattern Analysis
+                      </p>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <p className="text-white font-black text-sm mb-1">{result.movement_analysis.pattern}</p>
+                          <p className="text-slate-300 text-xs">Primary dispersal mode based on weather & population dynamics</p>
+                        </div>
+                        <div className="space-y-2">
+                          <div className="flex justify-between items-center">
+                            <span className="text-slate-400 text-xs font-bold">Dispersal Speed:</span>
+                            <span className="text-cyan-400 font-black text-sm">{result.movement_analysis.dispersal_speed_km_day} km/day</span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-slate-400 text-xs font-bold">Max Range:</span>
+                            <span className="text-cyan-400 font-black text-sm">{result.movement_analysis.max_range_km} km</span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-slate-400 text-xs font-bold">Concentration:</span>
+                            <span className="text-cyan-400 font-black text-sm">{Math.round(result.movement_analysis.concentration_ratio * 100)}%</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* AI Insights */}
+                  {result.ai_insights && (
+                    <div className="p-5 rounded-2xl bg-gradient-to-br from-purple-900/30 to-pink-900/30 border border-purple-500/30">
+                      <p className="text-[10px] font-black text-purple-400 uppercase tracking-widest mb-3 flex items-center gap-1.5">
+                        🤖 AI-Powered Epidemiological Insights (Ollama llama3.2)
+                      </p>
+                      <p className="text-slate-200 text-sm leading-relaxed font-medium">{result.ai_insights}</p>
+                    </div>
+                  )}
+
+                  {/* Main Summary */}
                   <div className="p-5 rounded-2xl bg-slate-800 border border-white/5">
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-1.5">
                       <Activity size={10}/> Model Output
                     </p>
                     <p className="text-slate-200 text-sm leading-relaxed">{result.summary}</p>
                   </div>
+
+                  {/* Hotspot Breakdown */}
                   <div>
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Hotspot Breakdown</p>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Hotspot Predictions</p>
                     <div className="space-y-4">
                       {result.hotspot_predictions.map((hp, i) => (
-                        <div key={i} className="p-5 rounded-2xl bg-slate-800 border border-white/5">
+                        <div key={i} className="p-5 rounded-2xl bg-slate-800 border border-white/5 hover:border-white/10 transition-all">
                           <div className="flex items-start justify-between mb-3">
                             <div>
                               <p className="text-white font-black text-sm">🦟 {hp.location_estimate}</p>
