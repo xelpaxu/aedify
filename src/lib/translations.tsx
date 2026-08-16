@@ -1,0 +1,401 @@
+'use client'
+
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
+
+export type Language = 'en' | 'tl'
+
+const translations = {
+  en: {
+    // Sidebar
+    dashboard: 'Dashboard',
+    analytics: 'Analytics',
+    reports: 'Reports',
+    riskMap: 'Risk Map',
+    assignments: 'Assignments',
+    settings: 'Settings',
+    logout: 'Logout',
+
+    // Header
+    aedifyInterface: 'Aedify',
+    barangayMonitoring: 'Barangay Monitoring',
+    districtMonitoring: 'District Monitoring',
+    systemManagement: 'System Management',
+
+    // Roles
+    lguAdmin: 'LGU Admin',
+    brgyAdmin: 'Brgy Admin',
+    sysAdmin: 'System Admin',
+    moloDistrict: 'Molo District, Iloilo',
+    calumpang: 'Calumpang, Molo',
+    sanJuan: 'San Juan, Molo',
+    southFundidor: 'South Fundidor, Molo',
+    globalRoot: 'Global Root Access',
+
+    // Login
+    welcomeBack: 'Welcome Back',
+    signInToDashboard: 'Sign in to access your dashboard',
+    emailAddress: 'Email Address',
+    password: 'Password',
+    forgotPassword: 'Forgot password?',
+    enterPassword: 'Enter your password',
+    signIn: 'Sign In',
+    signingIn: 'Signing in...',
+    secureAuth: 'Secure authentication',
+    dataSecure: 'Your data is encrypted and secure',
+    vecProSystem: 'Disease Surveillance',
+    vectorBorne: 'Disease Tracking',
+    invalidCredentials: 'Invalid email or password. Please try again.',
+    loginError: 'An error occurred during login.',
+
+    // Dashboard
+    surveillanceOverview: 'Surveillance Overview',
+    liveSec: 'Live',
+    barangayLocal: 'Barangay Local',
+    molosector: 'Molo Sector',
+    activeHotspots: 'Active Hotspots',
+    requiringAction: 'Requiring immediate action',
+    fieldPersonnel: 'Field Personnel',
+    activeDeployed: 'Active deployment units',
+    riskUpdate: 'Risk Update',
+    allSectorsStable: 'All sectors stable',
+    noOpenIncidents: 'No open incidents currently.',
+    elevatedRisk: 'Elevated risk in',
+    detected: 'Detected',
+    executeProtocols: 'Take Action',
+    globalScan: 'Live Map',
+    realtimeMap: 'Real-time monitoring',
+    activeStream: 'Activity Feed',
+    liveUpdates: 'Live Updates',
+
+    // Analytics
+    systemAnalytics: 'Analytics',
+    liveDiagnostics: 'Live',
+    deepDive: 'View detection performance, outbreak predictions, and team progress',
+    detectionAccuracy: 'Detection Accuracy',
+    smartVsBasic: 'Smart vs Basic Detection',
+    outbreakSimulation: 'Outbreak Spread Model',
+    spreadTimeline: 'Spread Over Time',
+    barangayProgress: 'Barangay Task Status',
+    clearedVsPending: 'Completed vs Pending Tasks',
+    exportData: 'Export',
+    last3days: 'Last 3 days',
+    oneWeek: '1 week',
+    oneMonth: '1 month',
+
+    // Reports
+    manageReports: 'Manage and review all reports',
+    newReport: 'New Report',
+    searchLocation: 'Search by location or reporter...',
+    allStatus: 'All Status',
+    critical: 'Critical',
+    verified: 'Verified',
+    pending: 'Pending',
+    noReports: 'No reports found',
+    adjustSearch: 'Try adjusting your search or filters',
+    unknownLocation: 'Unknown Location',
+    noDescription: 'No description provided',
+    unknown: 'Unknown',
+    view: 'View',
+    showing: 'Showing',
+    of: 'of',
+    reportsLower: 'reports',
+    loadingReports: 'Loading reports...',
+
+    // Report Detail
+    description: 'Description',
+    aiAnalysis: 'AI Analysis',
+    analysisPending: 'Analysis pending',
+    confidence: 'Confidence',
+    reportMetadata: 'Report Details',
+    reportedBy: 'Reported By',
+    date: 'Date',
+    status: 'Status',
+    verifiedField: 'Verified',
+    yes: 'Yes',
+    no: 'No',
+    location: 'Location',
+    actions: 'Actions',
+    verifying: 'Verifying...',
+    verifyReport: 'Verify Report',
+    dismissReport: 'Dismiss Report',
+    editReport: 'Edit Report',
+    backToReports: 'Back to reports',
+    reportNotFound: 'Report not found',
+    reportNotFoundDesc: "The report you're looking for doesn't exist or has been removed.",
+    aiView: 'AI View',
+    raw: 'Raw',
+    originalImage: 'Original Image',
+    noImage: 'No image available',
+
+    // Map
+    liveRiskMap: 'Live Risk Map',
+    verifiedHotspotsFound: 'Verified Hotspots Found',
+    enterSimulation: 'Run Simulation',
+    abmSpreadModel: 'Mosquito Spread Simulation',
+    street: 'Street',
+    satellite: 'Satellite',
+    assignTanodTeam: 'Assign Team',
+    aiReasoning: 'AI Finding',
+    unverifiedReports: 'Unverified Reports',
+    awaitingReview: 'Pending Review',
+    control: 'Control',
+
+    // Assignments
+    fieldAssignments: 'Field Assignments',
+    manageDispatch: 'Manage and dispatch teams to verified hotspots',
+    newAssignment: 'New Assignment',
+    total: 'Total',
+    assigned: 'Assigned',
+    inProgress: 'In Progress',
+    completed: 'Completed',
+    searchAssignments: 'Search assignments...',
+    assignment: 'Assignment',
+    team: 'Team',
+    reportStatus: 'Report Status',
+    noAssignments: 'No assignments found',
+    selectTeam: 'Select a team',
+    cancel: 'Cancel',
+    assign: 'Assign',
+    convReportId: 'Report ID',
+
+    // Settings
+    systemTuning: 'Settings',
+    adjustParams: 'Adjust model parameters and connections',
+    saveConfig: 'Save Settings',
+    coreConfig: 'Data Connections',
+    weatherApi: 'Weather Data (PAGASA)',
+    weatherStation: 'Weather Station',
+    cityGis: 'City Map Data',
+    terrainData: 'Terrain & Drainage',
+    refreshRate: 'Update Frequency',
+    every5min: 'Frequent (Every 5 minutes)',
+    every15min: 'Balanced (Every 15 minutes)',
+    everyHour: 'Slow (Every hour)',
+    abmConstants: 'Model Weights',
+    liveRecalc: 'Auto-Update',
+    weightWarning: 'Changing these values updates the risk map in real time.',
+    weatherWeight: 'Weather Weight',
+    detectionWeight: 'Detection Confidence Weight',
+    spreadWeight: 'Spread Rate Weight',
+    language: 'Language',
+    english: 'English',
+    tagalog: 'Filipino',
+  },
+  tl: {
+    // Sidebar
+    dashboard: 'Dashboard',
+    analytics: 'Analitika',
+    reports: 'Mga Ulat',
+    riskMap: 'Mapa ng Panganib',
+    assignments: 'Mga Takdang Gawain',
+    settings: 'Mga Setting',
+    logout: 'Mag-logout',
+
+    // Header
+    aedifyInterface: 'Aedify',
+    barangayMonitoring: 'Pagsubaybay sa Barangay',
+    districtMonitoring: 'Pagsubaybay sa Distrito',
+    systemManagement: 'Pamamahala ng Sistema',
+
+    // Roles
+    lguAdmin: 'LGU Admin',
+    brgyAdmin: 'Brgy Admin',
+    sysAdmin: 'System Admin',
+    moloDistrict: 'Molo District, Iloilo',
+    calumpang: 'Calumpang, Molo',
+    sanJuan: 'San Juan, Molo',
+    southFundidor: 'South Fundidor, Molo',
+    globalRoot: 'Global Root Access',
+
+    // Login
+    welcomeBack: 'Maligayang Pagbabalik',
+    signInToDashboard: 'Mag-sign in para ma-access ang iyong dashboard',
+    emailAddress: 'Email Address',
+    password: 'Password',
+    forgotPassword: 'Nakalimutan ang password?',
+    enterPassword: 'Ilagay ang iyong password',
+    signIn: 'Mag-sign In',
+    signingIn: 'Nag-sign in...',
+    secureAuth: 'Ligtas na authentication',
+    dataSecure: 'Ang iyong data ay naka-encrypt at ligtas',
+    vecProSystem: 'Pagsubaybay sa Sakit',
+    vectorBorne: 'Pagsubaybay sa Sakit',
+    invalidCredentials: 'Hindi tamang email o password. Subukan muli.',
+    loginError: 'May naganap na error sa pag-login.',
+
+    // Dashboard
+    surveillanceOverview: 'Pangkalahatang-tanaw ng Pagsubaybay',
+    liveSec: 'Live',
+    barangayLocal: 'Barangay Local',
+    molosector: 'Molo Sector',
+    activeHotspots: 'Aktibong mga Hotspot',
+    requiringAction: 'Nangangailangan ng agarang aksyon',
+    fieldPersonnel: 'Field Personnel',
+    activeDeployed: 'Mga aktibong tauhan',
+    riskUpdate: 'Update sa Panganib',
+    allSectorsStable: 'Lahat ng sektor ay stable',
+    noOpenIncidents: 'Walang bukas na insidente sa ngayon.',
+    elevatedRisk: 'Mataas na panganib sa',
+    detected: 'Nadetect',
+    executeProtocols: 'Gumawa ng Aksyon',
+    globalScan: 'Live na Mapa',
+    realtimeMap: 'Real-time na pagsubaybay',
+    activeStream: 'Feed ng Aktibidad',
+    liveUpdates: 'Live na Update',
+
+    // Analytics
+    systemAnalytics: 'Analitika',
+    liveDiagnostics: 'Live',
+    deepDive: 'Tingnan ang detection performance, outbreak predictions, at progress ng team',
+    detectionAccuracy: 'Accuracy ng Detection',
+    smartVsBasic: 'Smart vs Basic Detection',
+    outbreakSimulation: 'Model ng Pagkalat ng Sakit',
+    spreadTimeline: 'Pagkalat sa Paglipas ng Panahon',
+    barangayProgress: 'Status ng Gawain sa Barangay',
+    clearedVsPending: 'Tapos vs Nakabinbin na Gawain',
+    exportData: 'I-export',
+    last3days: 'Huling 3 araw',
+    oneWeek: '1 linggo',
+    oneMonth: '1 buwan',
+
+    // Reports
+    manageReports: 'Pamahalaan at suriin ang lahat ng ulat',
+    newReport: 'Bagong Ulat',
+    searchLocation: 'Maghanap sa pamamagitan ng lokasyon o reporter...',
+    allStatus: 'Lahat ng Status',
+    critical: 'Kritikal',
+    verified: 'Napatunayan',
+    pending: 'Nakabinbin',
+    noReports: 'Walang nahanap na ulat',
+    adjustSearch: 'Subukan baguhin ang iyong paghahanap o filter',
+    unknownLocation: 'Hindi Kilalang Lokasyon',
+    noDescription: 'Walang deskripsyon',
+    unknown: 'Hindi Kilala',
+    view: 'Tingnan',
+    showing: 'Nagpapakita ng',
+    of: 'sa',
+    reportsLower: 'mga ulat',
+    loadingReports: 'Naglo-load ng mga ulat...',
+
+    // Report Detail
+    description: 'Deskripsyon',
+    aiAnalysis: 'AI Analysis',
+    analysisPending: 'Naghihintay ng analysis',
+    confidence: 'Kumpyansa',
+    reportMetadata: 'Mga Detalye ng Ulat',
+    reportedBy: 'Iniulat Ni',
+    date: 'Petsa',
+    status: 'Status',
+    verifiedField: 'Napatunayan',
+    yes: 'Oo',
+    no: 'Hindi',
+    location: 'Lokasyon',
+    actions: 'Mga Aksyon',
+    verifying: 'Vine-verify...',
+    verifyReport: 'I-verify ang Ulat',
+    dismissReport: 'I-dismiss ang Ulat',
+    editReport: 'I-edit ang Ulat',
+    backToReports: 'Bumalik sa mga ulat',
+    reportNotFound: 'Hindi nahanap ang ulat',
+    reportNotFoundDesc: 'Ang ulat na hinahanap mo ay wala o tinanggal na.',
+    aiView: 'AI View',
+    raw: 'Raw',
+    originalImage: 'Orihinal na Larawan',
+    noImage: 'Walang larawan',
+
+    // Map
+    liveRiskMap: 'Live na Mapa ng Panganib',
+    verifiedHotspotsFound: 'Mga Napatunayang Hotspot',
+    enterSimulation: 'Takbohin ang Simulation',
+    abmSpreadModel: 'Simulation ng Pagkalat ng Lamok',
+    street: 'Kalye',
+    satellite: 'Satellite',
+    assignTanodTeam: 'Italaga ang Team',
+    aiReasoning: 'AI Finding',
+    unverifiedReports: 'Mga Hindi Pa Napatunayang Ulat',
+    awaitingReview: 'Naghihintay ng Review',
+    control: 'Control',
+
+    // Assignments
+    fieldAssignments: 'Mga Takdang Gawain sa Field',
+    manageDispatch: 'Pamahalaan at i-dispatch ang mga team sa mga hotspot',
+    newAssignment: 'Bagong Takdang Gawain',
+    total: 'Kabuuan',
+    assigned: 'Itinalaga',
+    inProgress: 'Isinasagawa',
+    completed: 'Natapos',
+    searchAssignments: 'Maghanap ng takdang gawain...',
+    assignment: 'Takdang Gawain',
+    team: 'Team',
+    reportStatus: 'Status ng Ulat',
+    noAssignments: 'Walang nahanap na takdang gawain',
+    selectTeam: 'Pumili ng team',
+    cancel: 'Kanselahin',
+    assign: 'Italaga',
+    convReportId: 'Report ID',
+
+    // Settings
+    systemTuning: 'Mga Setting',
+    adjustParams: 'Baguhin ang mga parameter ng model at koneksyon',
+    saveConfig: 'I-save ang Settings',
+    coreConfig: 'Mga Koneksyon sa Datos',
+    weatherApi: 'Weather Data (PAGASA)',
+    weatherStation: 'Weather Station',
+    cityGis: 'Datos ng Mapa ng Lungsod',
+    terrainData: 'Terrain at Drainage',
+    refreshRate: 'Dalas ng Update',
+    every5min: 'Mabilis (Bawat 5 minuto)',
+    every15min: 'Balanseng (Bawat 15 minuto)',
+    everyHour: 'Mabagal (Bawat oras)',
+    abmConstants: 'Mga Timbang ng Model',
+    liveRecalc: 'Auto-Update',
+    weightWarning: 'Ang pagbabago ng mga halagang ito ay nag-a-update ng risk map sa real time.',
+    weatherWeight: 'Timbang ng Panahon',
+    detectionWeight: 'Timbang ng Detection Confidence',
+    spreadWeight: 'Timbang ng Spread Rate',
+    language: 'Wika',
+    english: 'English',
+    tagalog: 'Filipino',
+  },
+}
+
+interface LanguageContextType {
+  language: Language
+  setLanguage: (lang: Language) => void
+  t: (key: string) => string
+}
+
+const LanguageContext = createContext<LanguageContextType>({
+  language: 'en',
+  setLanguage: () => {},
+  t: (key: string) => key,
+})
+
+export function LanguageProvider({ children }: { children: ReactNode }) {
+  const [language, setLanguageState] = useState<Language>('en')
+
+  useEffect(() => {
+    const saved = localStorage.getItem('aedify-language') as Language | null
+    if (saved && (saved === 'en' || saved === 'tl')) {
+      setLanguageState(saved)
+    }
+  }, [])
+
+  const setLanguage = (lang: Language) => {
+    setLanguageState(lang)
+    localStorage.setItem('aedify-language', lang)
+  }
+
+  const t = (key: string): string => {
+    const langData = translations[language] as Record<string, string>
+    return langData[key] || translations.en[key as keyof typeof translations.en] || key
+  }
+
+  return (
+    <LanguageContext.Provider value={{ language, setLanguage, t }}>
+      {children}
+    </LanguageContext.Provider>
+  )
+}
+
+export const useLanguage = () => useContext(LanguageContext)
