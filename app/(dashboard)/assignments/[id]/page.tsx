@@ -128,7 +128,7 @@ export default function AssignmentDetailPage() {
   const leaderName = assignment.memberNames?.[assignment.memberIds?.indexOf(assignment.leaderId) ?? -1] || 'Not assigned'
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6 pb-8 animate-fade-in-up">
+    <div className="max-w-5xl mx-auto space-y-6 animate-fade-in-up">
       {/* Hero Header */}
       <div className="relative overflow-hidden rounded-2xl bg-slate-900">
         <div className="relative z-10 p-6 pb-5">

@@ -103,7 +103,7 @@ export default function AssignmentsPage() {
   }
 
   return (
-    <div className="h-full flex flex-col animate-fade-in-up max-w-[1600px] w-full mx-auto pb-6">
+    <div className="h-full flex flex-col animate-fade-in-up max-w-[1600px] w-full mx-auto">
       {/* Header */}
       <div className="flex items-center justify-between mb-6 shrink-0">
         <div>

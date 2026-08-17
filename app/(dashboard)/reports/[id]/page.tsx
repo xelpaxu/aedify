@@ -28,7 +28,13 @@ import {
   ChevronDown,
   Crosshair,
   Grid,
-  List
+  List,
+  Save,
+  RefreshCw,
+  Map,
+  Navigation,
+  Eye,
+  EyeOff
 } from 'lucide-react'
 import Link from 'next/link'
 import { useState, useEffect } from 'react'
@@ -90,6 +96,284 @@ function DetailSkeleton() {
   )
 }
 
+// Edit Modal Component
+function EditReportModal({ 
+  isOpen, 
+  onClose, 
+  report, 
+  onSave,
+  isSaving 
+}: { 
+  isOpen: boolean
+  onClose: () => void
+  report: any
+  onSave: (data: any) => void
+  isSaving: boolean
+}) {
+  const [formData, setFormData] = useState({
+    locationName: '',
+    description: '',
+    status: '',
+    accuracy: 0,
+    reasoning: '',
+    lat: 0,
+    lng: 0,
+    userName: ''
+  })
+
+  const [isResettingToAI, setIsResettingToAI] = useState(false)
+
+  useEffect(() => {
+    if (report) {
+      setFormData({
+        locationName: report.locationName || '',
+        description: report.description || '',
+        status: report.status || 'pending',
+        accuracy: report.accuracy || 0,
+        reasoning: report.reasoning || '',
+        lat: report.lat || 0,
+        lng: report.lng || 0,
+        userName: report.userName || ''
+      })
+    }
+  }, [report])
+
+  if (!isOpen) return null
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    onSave(formData)
+  }
+
+  const resetToAI = () => {
+    setIsResettingToAI(true)
+    if (report) {
+      setFormData({
+        locationName: report.locationName || '',
+        description: report.description || '',
+        status: report.status || 'pending',
+        accuracy: report.accuracy || 0,
+        reasoning: report.reasoning || '',
+        lat: report.lat || 0,
+        lng: report.lng || 0,
+        userName: report.userName || ''
+      })
+    }
+    setTimeout(() => setIsResettingToAI(false), 500)
+  }
+
+  return (
+    <div className="fixed inset-0 z-[200] bg-slate-950/50 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+      <div 
+        className="bg-white rounded-3xl w-full max-w-3xl max-h-[90vh] overflow-hidden shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Modal Header */}
+        <div className="flex items-center justify-between p-6 border-b border-slate-200/60">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-primary-50 rounded-xl">
+              <Pencil className="h-5 w-5 text-primary-600" />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-slate-900">Edit Report</h2>
+              <p className="text-sm text-slate-500">Correct AI-detected information before validation</p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-slate-100 rounded-xl transition-colors"
+          >
+            <X className="h-5 w-5 text-slate-400" />
+          </button>
+        </div>
+
+        {/* Modal Body */}
+        <div className="p-6 overflow-y-auto max-h-[calc(90vh-180px)]">
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Quick Actions */}
+            <div className="flex items-center gap-3 p-4 bg-amber-50 rounded-2xl border border-amber-200/50">
+              <AlertCircle className="h-5 w-5 text-amber-500 flex-shrink-0" />
+              <p className="text-sm text-amber-700 flex-1">
+                AI detection may contain errors. Review and correct the information below.
+              </p>
+              <button
+                type="button"
+                onClick={resetToAI}
+                disabled={isResettingToAI}
+                className="flex items-center gap-2 px-4 py-2 bg-white border border-amber-300 rounded-xl text-amber-700 text-sm font-semibold hover:bg-amber-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isResettingToAI ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-4 w-4" />
+                )}
+                Reset to AI
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Location Name */}
+              <div className="md:col-span-2">
+                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                  Location Name <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={formData.locationName}
+                  onChange={(e) => setFormData({ ...formData, locationName: e.target.value })}
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none transition-all"
+                  placeholder="e.g., Central Park, NYC"
+                  required
+                />
+              </div>
+
+              {/* Description */}
+              <div className="md:col-span-2">
+                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                  Description
+                </label>
+                <textarea
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  rows={4}
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none transition-all resize-none"
+                  placeholder="Describe the incident in detail..."
+                />
+              </div>
+
+              {/* Status */}
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                  Status <span className="text-rose-500">*</span>
+                </label>
+                <select
+                  value={formData.status}
+                  onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none transition-all"
+                >
+                  <option value="pending">Pending</option>
+                  <option value="verified">Verified</option>
+                  <option value="critical">Critical</option>
+                  <option value="dismissed">Dismissed</option>
+                </select>
+              </div>
+
+              {/* Confidence/Accuracy */}
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                  Confidence Score (%)
+                </label>
+                <input
+                  type="number"
+                  value={formData.accuracy}
+                  onChange={(e) => setFormData({ ...formData, accuracy: Number(e.target.value) })}
+                  min="0"
+                  max="100"
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none transition-all"
+                />
+              </div>
+
+              {/* AI Reasoning */}
+              <div className="md:col-span-2">
+                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                  AI Reasoning
+                </label>
+                <textarea
+                  value={formData.reasoning}
+                  onChange={(e) => setFormData({ ...formData, reasoning: e.target.value })}
+                  rows={3}
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none transition-all resize-none"
+                  placeholder="AI analysis reasoning..."
+                />
+              </div>
+
+              {/* Coordinates */}
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                  Latitude <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="number"
+                  value={formData.lat}
+                  onChange={(e) => setFormData({ ...formData, lat: Number(e.target.value) })}
+                  step="any"
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none transition-all"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                  Longitude <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="number"
+                  value={formData.lng}
+                  onChange={(e) => setFormData({ ...formData, lng: Number(e.target.value) })}
+                  step="any"
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none transition-all"
+                  required
+                />
+              </div>
+
+              {/* Reporter Name */}
+              <div className="md:col-span-2">
+                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                  Reporter Name
+                </label>
+                <input
+                  type="text"
+                  value={formData.userName}
+                  onChange={(e) => setFormData({ ...formData, userName: e.target.value })}
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none transition-all"
+                  placeholder="Name of the person who reported"
+                />
+              </div>
+            </div>
+
+            {/* Changes Summary */}
+            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200">
+              <div className="flex items-center gap-2 text-sm text-slate-600">
+                <Info className="h-4 w-4 text-slate-400" />
+                <span>Changes will be logged for audit purposes</span>
+              </div>
+            </div>
+          </form>
+        </div>
+
+        {/* Modal Footer */}
+        <div className="flex items-center justify-end gap-3 p-6 border-t border-slate-200/60 bg-slate-50/50">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-6 py-3 bg-white border border-slate-200 rounded-xl text-slate-700 font-semibold hover:bg-slate-50 transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={handleSubmit}
+            disabled={isSaving}
+            className="flex items-center gap-2 px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white rounded-xl font-semibold shadow-lg shadow-primary-200/50 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            {isSaving ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              <>
+                <Save className="h-4 w-4" />
+                Save Changes
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function ReportDetailPage() {
   const params = useParams()
   const router = useRouter()
@@ -97,11 +381,15 @@ export default function ReportDetailPage() {
   
   const report = useQuery(api.reports.getReport, { id: reportId as Id<"reports"> })
   const verify = useMutation(api.reports.verifyReport)
+  const updateReport = useMutation(api.reports.updateReport)
   
   const [viewMode, setViewMode] = useState<'annotated' | 'raw'>('annotated')
   const [isPreviewOpen, setIsPreviewOpen] = useState(false)
   const [isVerifying, setIsVerifying] = useState(false)
   const [isExpanded, setIsExpanded] = useState(false)
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+  const [showSuccess, setShowSuccess] = useState(false)
 
   const getStatusBadge = (status: string) => {
     switch (status?.toLowerCase()) {
@@ -122,6 +410,15 @@ export default function ReportDetailPage() {
           border: 'border-emerald-200',
           label: 'Verified',
           icon: CheckCircle
+        }
+      case 'dismissed':
+        return { 
+          color: 'bg-slate-500', 
+          bg: 'bg-slate-50', 
+          text: 'text-slate-700', 
+          border: 'border-slate-200',
+          label: 'Dismissed',
+          icon: X
         }
       default:
         return { 
@@ -144,6 +441,38 @@ export default function ReportDetailPage() {
     if (targetString.startsWith('http')) return targetString
     if (targetString.startsWith('data:')) return targetString
     return `data:image/jpeg;base64,${targetString}`
+  }
+
+  const handleVerify = async () => {
+    if (!report) return
+    
+    setIsVerifying(true)
+    try {
+      await verify({ id: report._id as Id<"reports"> })
+    } catch (error) {
+      console.error('Verification failed:', error)
+    } finally {
+      setIsVerifying(false)
+    }
+  }
+
+  const handleSaveEdit = async (formData: any) => {
+    if (!report) return
+    
+    setIsSaving(true)
+    try {
+      await updateReport({ 
+        id: report._id as Id<"reports">,
+        ...formData
+      })
+      setShowSuccess(true)
+      setIsEditModalOpen(false)
+      setTimeout(() => setShowSuccess(false), 3000)
+    } catch (error) {
+      console.error('Update failed:', error)
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   if (report === undefined) {
@@ -170,19 +499,16 @@ export default function ReportDetailPage() {
   const StatusIcon = status.icon
   const imageUrl = getDisplayImage(report, viewMode)
 
-  const handleVerify = async () => {
-    setIsVerifying(true)
-    try {
-      await verify({ id: report._id as Id<"reports"> })
-    } catch (error) {
-      console.error('Verification failed:', error)
-    } finally {
-      setIsVerifying(false)
-    }
-  }
-
   return (
-    <div className="max-w-6xl mx-auto space-y-6 pb-8">
+    <div className="max-w-6xl mx-auto space-y-6">
+      {/* Success Toast */}
+      {showSuccess && (
+        <div className="fixed top-6 right-6 z-[300] bg-emerald-500 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 animate-in slide-in-from-top-5 duration-300">
+          <CheckCircle className="h-5 w-5" />
+          <span className="font-semibold">Report updated successfully!</span>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-3">
@@ -209,6 +535,13 @@ export default function ReportDetailPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => setIsEditModalOpen(true)}
+            className="flex items-center gap-2 px-4 py-2.5 bg-primary-600 hover:bg-primary-700 text-white rounded-xl font-semibold transition-all shadow-lg shadow-primary-200/50"
+          >
+            <Pencil className="h-4 w-4" />
+            Edit Report
+          </button>
           <button className="p-2.5 bg-white border border-slate-200 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-50 transition-all">
             <Printer className="h-4 w-4" />
           </button>
@@ -244,7 +577,7 @@ export default function ReportDetailPage() {
                   }`}
                 >
                   <Zap className="h-3 w-3" />
-                  AI
+                  Annotated
                 </button>
                 <button
                   onClick={() => setViewMode('raw')}
@@ -358,6 +691,15 @@ export default function ReportDetailPage() {
         </div>
       )}
 
+      {/* Edit Modal */}
+      <EditReportModal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        report={report}
+        onSave={handleSaveEdit}
+        isSaving={isSaving}
+      />
+
       {/* Details Grid - 2/3 + 1/3 Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column - 2/3 */}
@@ -415,7 +757,19 @@ export default function ReportDetailPage() {
               </div>
               <div className="p-3 bg-slate-50 rounded-xl">
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Verified</p>
-                <p className="text-sm font-medium text-slate-900 mt-1">{report.verified ? '✅ Yes' : '❌ No'}</p>
+                <p className="text-sm font-medium text-slate-900 mt-1">
+                  {report.verified ? (
+                    <span className="flex items-center gap-1 text-emerald-600">
+                      <CheckCircle className="h-4 w-4" />
+                      Yes
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-1 text-slate-400">
+                      <X className="h-4 w-4" />
+                      No
+                    </span>
+                  )}
+                </p>
               </div>
             </div>
           </div>
@@ -441,14 +795,18 @@ export default function ReportDetailPage() {
                 <RecenterMap coords={[report.lat || 0, report.lng || 0]} />
               </MapContainer>
             </div>
-            <div className="mt-2 text-xs font-mono text-slate-500 bg-slate-50 p-2 rounded-lg text-center border border-slate-100">
-              📍 {report.lat?.toFixed(6) || '0.000000'}, {report.lng?.toFixed(6) || '0.000000'}
+            <div className="mt-2 text-xs font-mono text-slate-500 bg-slate-50 p-2 rounded-lg text-center border border-slate-100 flex items-center justify-center gap-2">
+              <Navigation className="h-3 w-3" />
+              {report.lat?.toFixed(6) || '0.000000'}, {report.lng?.toFixed(6) || '0.000000'}
             </div>
           </div>
 
           {/* Actions */}
           <div className="bg-white rounded-2xl p-5 border border-slate-200/60 shadow-sm">
-            <h3 className="font-bold text-slate-900 mb-3 text-sm">Actions</h3>
+            <h3 className="font-bold text-slate-900 mb-3 text-sm flex items-center gap-2">
+              <Zap className="h-4 w-4 text-primary-500" />
+              Actions
+            </h3>
             <div className="space-y-2.5">
               <button
                 disabled={report.verified || isVerifying}
@@ -482,12 +840,19 @@ export default function ReportDetailPage() {
                 Dismiss Report
               </button>
 
-              <Link
-                href={`/reports/${report._id}/edit`}
+              <button
+                onClick={() => setIsEditModalOpen(true)}
                 className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors"
               >
-                ✏️ Edit Report
-              </Link>
+                <Pencil className="h-4 w-4" />
+                Edit Report
+              </button>
+
+              {/* Team Assignment */}
+              <button className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-bold bg-indigo-50 hover:bg-indigo-100 text-indigo-600 transition-colors border border-indigo-200/50">
+                <User className="h-4 w-4" />
+                Assign Team
+              </button>
             </div>
           </div>
         </div>

@@ -15,9 +15,45 @@ import SimulationField from '../../../src/components/dashboard/SimulationField'
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 
-const MapContainer = dynamic(() => import('react-leaflet').then(mod => mod.MapContainer), { ssr: false })
-const TileLayer = dynamic(() => import('react-leaflet').then(mod => mod.TileLayer), { ssr: false })
-const CircleMarker = dynamic(() => import('react-leaflet').then(mod => mod.CircleMarker), { ssr: false })
+// ✅ Import Leaflet CSS
+import 'leaflet/dist/leaflet.css'
+
+// ✅ Fix Leaflet icon paths
+import L from 'leaflet'
+
+// Fix default marker icons
+delete (L.Icon.Default.prototype as any)._getIconUrl
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
+  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+})
+
+// Dynamic imports with loading states
+const MapContainer = dynamic(
+  () => import('react-leaflet').then((mod) => mod.MapContainer),
+  { 
+    ssr: false,
+    loading: () => (
+      <div className="w-full h-full flex items-center justify-center bg-slate-100">
+        <div className="flex flex-col items-center gap-2">
+          <div className="w-8 h-8 border-4 border-slate-200 border-t-slate-600 rounded-full animate-spin" />
+          <p className="text-sm text-slate-500">Loading map...</p>
+        </div>
+      </div>
+    )
+  }
+)
+
+const TileLayer = dynamic(
+  () => import('react-leaflet').then((mod) => mod.TileLayer),
+  { ssr: false }
+)
+
+const CircleMarker = dynamic(
+  () => import('react-leaflet').then((mod) => mod.CircleMarker),
+  { ssr: false }
+)
 
 interface Sector {
   name: string
@@ -32,12 +68,21 @@ const SECTOR_VIEWS: Record<string, Sector> = {
   south_fundidor: { name: "South Fundidor, Molo", center: [10.690069890430216, 122.53190738825322], zoom: 18 },
 }
 
+// ✅ Fixed MapUpdater with proper error handling
 function MapUpdater({ center, zoom }: { center: [number, number]; zoom: number }) {
   const { useMap } = require('react-leaflet')
   const map = useMap()
+  
   useEffect(() => {
-    map.flyTo(center, zoom, { duration: 1.5, easeLinearity: 0.25 })
+    if (map) {
+      try {
+        map.flyTo(center, zoom, { duration: 1.5, easeLinearity: 0.25 })
+      } catch (error) {
+        console.warn('Map not ready for flyTo:', error)
+      }
+    }
   }, [center, zoom, map])
+  
   return null
 }
 
@@ -187,6 +232,7 @@ export default function RiskMapPage() {
   const [selectedReportId, setSelectedReportId] = useState<string | null>(null)
   const [currentView, setCurrentView] = useState<Sector>(SECTOR_VIEWS.molo_district)
   const [showSim, setShowSim] = useState(false)
+  const [isMapReady, setIsMapReady] = useState(false)
 
   const { user } = useAuth()
   const { t } = useLanguage()
@@ -203,6 +249,13 @@ export default function RiskMapPage() {
     if (user?.role === 'brgy-sanjuan') setCurrentView(SECTOR_VIEWS.san_juan)
     if (user?.role === 'brgy-southfundidor') setCurrentView(SECTOR_VIEWS.south_fundidor)
   }, [user?.role])
+
+  // ✅ Reset map ready state when component unmounts
+  useEffect(() => {
+    return () => {
+      setIsMapReady(false)
+    }
+  }, [])
 
   return (
     <>
@@ -221,13 +274,16 @@ export default function RiskMapPage() {
         />
       )}
 
-      <div className="h-full w-full relative overflow-hidden animate-fade-in rounded-2xl flex">
+      <div className="h-[calc(100vh-7.5rem)] sm:h-[calc(100vh-8.5rem)] lg:h-[calc(100vh-9rem)] w-full relative overflow-hidden animate-fade-in rounded-2xl flex">
         <div className="flex-1 relative">
+          {/* ✅ Use key prop to force remount when sector changes */}
           <MapContainer
+            key={`map-${currentView.center[0]}-${currentView.center[1]}`}
             center={currentView.center}
             zoom={currentView.zoom}
             className="w-full h-full z-0"
             zoomControl={false}
+            whenReady={() => setIsMapReady(true)}
           >
             {mapType === "street" ? (
               <TileLayer
@@ -241,7 +297,10 @@ export default function RiskMapPage() {
               />
             )}
 
-            <MapUpdater center={currentView.center} zoom={currentView.zoom} />
+            {/* ✅ Only render MapUpdater when map is ready */}
+            {isMapReady && (
+              <MapUpdater center={currentView.center} zoom={currentView.zoom} />
+            )}
 
             {verifiedHotspots.map((report) => (
               <CircleMarker
@@ -304,10 +363,14 @@ export default function RiskMapPage() {
             </div>
 
             {/* Sector selector */}
-            <div className="pointer-events-auto bg-white/90 backdrop-blur-md rounded-xl border border-slate-200/60 overflow-hidden">
+            <div className="pointer-events-auto bg-white/90 backdrop-blur-md rounded-xl border border-slate-200/60 overflow-hidden relative">
               <select
                 className="bg-transparent pl-3 pr-8 py-2 text-[10px] font-semibold text-slate-700 appearance-none cursor-pointer focus:outline-none"
-                onChange={(e) => setCurrentView(SECTOR_VIEWS[e.target.value])}
+                onChange={(e) => {
+                  setCurrentView(SECTOR_VIEWS[e.target.value])
+                  setIsMapReady(false) // Reset map ready state
+                }}
+                value={Object.keys(SECTOR_VIEWS).find(key => SECTOR_VIEWS[key] === currentView) || 'molo_district'}
               >
                 {Object.entries(SECTOR_VIEWS).map(([key, sector]) => (
                   <option key={key} value={key}>{sector.name}</option>

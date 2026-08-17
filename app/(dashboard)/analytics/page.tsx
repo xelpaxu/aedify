@@ -45,7 +45,7 @@ export default function AnalyticsPage() {
   const { t } = useLanguage()
 
   return (
-    <div className="space-y-6 animate-fade-in-up h-full flex flex-col pb-6 max-w-[1600px] mx-auto w-full">
+    <div className="space-y-6 animate-fade-in-up h-full flex flex-col max-w-[1600px] mx-auto w-full">
       {/* Header */}
       <div className="flex items-center justify-between shrink-0">
         <div>

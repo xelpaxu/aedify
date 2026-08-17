@@ -46,7 +46,7 @@ export default function DashboardPage() {
     : t('noOpenIncidents')
 
   return (
-    <div className="space-y-6 animate-fade-in-up max-w-[1600px] w-full mx-auto pb-8">
+    <div className="space-y-6 animate-fade-in-up max-w-[1600px] w-full mx-auto">
       {/* Page header */}
       <div className="flex items-center justify-between">
         <div>

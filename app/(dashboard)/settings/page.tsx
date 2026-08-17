@@ -13,7 +13,7 @@ export default function SettingsPage() {
   const [gisApi, setGisApi] = useState(true)
 
   return (
-    <div className="h-full flex flex-col space-y-6 animate-fade-in-up max-w-5xl mx-auto w-full pb-8">
+    <div className="h-full flex flex-col space-y-6 animate-fade-in-up max-w-5xl mx-auto w-full">
       {/* Header */}
       <div className="shrink-0 flex items-center justify-between">
         <div>
