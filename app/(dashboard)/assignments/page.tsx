@@ -31,7 +31,7 @@ import {
   Sparkles
 } from "lucide-react"
 import { useQuery, useMutation } from "convex/react"
-import { api } from "../../../../convex/_generated/api"
+import { api } from "@/convex/_generated/api"
 import { useLanguage } from '../../../src/lib/translations'
 import { useReverseGeocode, getLocationHierarchy, extractConfidenceScore } from '../../../src/lib/geoUtils'
 import { mockAssignments, mockReports } from '../../../src/lib/mockData'

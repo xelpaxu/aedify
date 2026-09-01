@@ -8,7 +8,7 @@ import { mockDashboardActivities, mockReports, mockAssignments } from '../../../
 import { useAuth } from '../../../src/lib/auth'
 import { useLanguage } from '../../../src/lib/translations'
 import { useQuery } from 'convex/react'
-import { api } from '../../../../convex/_generated/api'
+import { api } from '@/convex/_generated/api'
 import { applyCoordinateOffsets, formatReportLocation } from '../../../src/lib/geoUtils'
 
 import L from 'leaflet'

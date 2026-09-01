@@ -10,7 +10,7 @@ import {
 import { useAuth } from '../../../src/lib/auth'
 import { useLanguage } from '../../../src/lib/translations'
 import { useQuery } from "convex/react"
-import { api } from "../../../../convex/_generated/api"
+import { api } from "@/convex/_generated/api"
 import SimulationField from '../../../src/components/dashboard/SimulationField'
 import { useRouter } from "next/navigation"
 import Link from "next/link"
