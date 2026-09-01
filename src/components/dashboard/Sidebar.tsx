@@ -49,13 +49,13 @@ export function Sidebar() {
     <aside className="w-[260px] shrink-0 bg-white border-r border-slate-200/80 flex flex-col h-full">
       {/* Logo */}
       <div className="px-5 h-16 flex items-center gap-3 border-b border-slate-100">
-        <div className="w-9 h-9 rounded-xl bg-slate-900 flex items-center justify-center">
+        <div className="w-8 h-8 relative flex items-center justify-center">
           <Image
-            src="/assets/images/favicon.ico"
+            src="/assets/logo/aedify.png"
             alt="Aedify"
-            width={22}
-            height={22}
-            className="object-contain brightness-0 invert"
+            width={32}
+            height={32}
+            className="object-contain"
           />
         </div>
         <div className="flex flex-col">
@@ -80,14 +80,14 @@ export function Sidebar() {
                     href={href}
                     className={`group flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 ${
                       isActive
-                        ? 'bg-slate-100 text-slate-900'
+                        ? 'bg-primary-50 text-primary-700'
                         : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'
                     }`}
                   >
                     <Icon
                       size={18}
                       strokeWidth={isActive ? 2.2 : 1.7}
-                      className={`transition-colors ${isActive ? 'text-slate-700' : 'text-slate-400 group-hover:text-slate-500'}`}
+                      className={`transition-colors ${isActive ? 'text-primary-600' : 'text-slate-400 group-hover:text-slate-500'}`}
                     />
                     <span className="flex-1">{label}</span>
                     {isActive && (

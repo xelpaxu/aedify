@@ -97,8 +97,8 @@ export function RootLayout({ children }: RootLayoutProps) {
             <button className="relative p-2.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-all">
               <Bell size={18} strokeWidth={1.8} />
               <span className="absolute top-2 right-2 flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75" />
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500 ring-2 ring-white" />
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-primary-500 ring-2 ring-white" />
               </span>
             </button>
 
@@ -111,9 +111,9 @@ export function RootLayout({ children }: RootLayoutProps) {
                 onClick={() => setShowProfile(!showProfile)}
                 className="flex items-center gap-3 pl-2 pr-3 py-1.5 rounded-xl hover:bg-slate-50/80 transition-all group border border-transparent hover:border-slate-200/60"
               >
-                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary-500/10 to-indigo-500/10 flex items-center justify-center overflow-hidden ring-2 ring-slate-200/50 group-hover:ring-primary-200/50 transition-all">
+                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary-500/20 to-primary-600/10 flex items-center justify-center overflow-hidden ring-2 ring-slate-200/50 group-hover:ring-primary-200/50 transition-all">
                   <Image
-                    src="/assets/images/Aedify.png"
+                    src="/assets/logo/aedify.png"
                     alt="profile"
                     width={36}
                     height={36}
@@ -144,9 +144,9 @@ export function RootLayout({ children }: RootLayoutProps) {
                     {/* User info */}
                     <div className="px-4 py-3.5 border-b border-slate-100">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500/10 to-indigo-500/10 flex items-center justify-center">
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500/20 to-primary-600/10 flex items-center justify-center">
                           <Image
-                            src="/assets/images/Aedify.png"
+                            src="/assets/logo/aedify.png"
                             alt="profile"
                             width={40}
                             height={40}
@@ -188,10 +188,10 @@ export function RootLayout({ children }: RootLayoutProps) {
                     <div className="border-t border-slate-100 pt-1">
                       <button
                         onClick={() => { logout(); setShowProfile(false) }}
-                        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-rose-600 hover:bg-rose-50 transition-colors"
+                        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-primary-600 hover:bg-primary-50 transition-colors"
                       >
-                        <div className="w-7 h-7 rounded-lg bg-rose-50 flex items-center justify-center">
-                          <LogOut size={14} />
+                        <div className="w-7 h-7 rounded-lg bg-primary-50 flex items-center justify-center">
+                          <LogOut size={14} className="text-primary-600" />
                         </div>
                         {t('logout')}
                       </button>
@@ -204,7 +204,7 @@ export function RootLayout({ children }: RootLayoutProps) {
         </header>
 
         {/* Content */}
-        <section className="flex-1 overflow-y-auto scroll-smooth p-3 sm:p-4">
+        <section className="flex-1 overflow-y-auto scroll-smooth p-5 sm:p-7">
           {children}
         </section>
       </main>

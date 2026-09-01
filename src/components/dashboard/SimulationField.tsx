@@ -99,43 +99,57 @@ function easeInOut(t: number) {
   return t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t+2, 3)/2
 }
 
-function makeMosqIcon(color: string, glowColor: string): DivIcon {
-  const s = 44
+function getSimPinIcon(status?: string, verified?: boolean) {
+  const s = status?.toUpperCase()
+  let iconUrl = '/assets/images/pin_safe.png'
+  let glowColor = 'rgba(16, 185, 129, 0.45)'
+  if (s === 'CRITICAL' || s === 'HIGH') {
+    iconUrl = '/assets/images/pin_critical.png'
+    glowColor = 'rgba(239, 68, 68, 0.55)'
+  } else if (s === 'MODERATE' || s === 'MEDIUM' || !verified) {
+    iconUrl = '/assets/images/pin_moderate.png'
+    glowColor = 'rgba(245, 158, 11, 0.55)'
+  }
+
+  const size = 36
   const html = `
-  <div style="position:relative;width:${s}px;height:${s}px;pointer-events:none;">
-    <div class="mosq-pulse-ring" style="background:${glowColor};animation-delay:0s;"></div>
-    <div class="mosq-pulse-ring" style="background:${glowColor};animation-delay:0.6s;"></div>
-    <svg class="mosq-icon-svg" width="${s}" height="${s}" viewBox="0 0 64 64"
-         xmlns="http://www.w3.org/2000/svg"
-         style="filter:drop-shadow(0 0 7px ${glowColor});">
-      <ellipse cx="32" cy="37" rx="5.5" ry="13" fill="${color}"/>
-      <ellipse cx="32" cy="24" rx="4.5" ry="5.5" fill="${color}"/>
-      <circle cx="32" cy="17" r="4.5" fill="${color}"/>
-      <path d="M32 21 Q31 14 32 9" stroke="${color}" stroke-width="1.3" fill="none" stroke-linecap="round"/>
-      <path d="M30 14 Q25 7 22 4"  stroke="${color}" stroke-width="1.1" fill="none" stroke-linecap="round"/>
-      <path d="M34 14 Q39 7 42 4"  stroke="${color}" stroke-width="1.1" fill="none" stroke-linecap="round"/>
-      <ellipse cx="18" cy="27" rx="13" ry="5.5" fill="rgba(255,255,255,0.5)"
-               stroke="${color}" stroke-width="0.8"
-               style="animation:mosq-wings-l 0.15s linear infinite alternate;transform-origin:31px 27px;"/>
-      <ellipse cx="46" cy="27" rx="13" ry="5.5" fill="rgba(255,255,255,0.5)"
-               stroke="${color}" stroke-width="0.8"
-               style="animation:mosq-wings-r 0.15s linear infinite alternate-reverse;transform-origin:33px 27px;"/>
-      <g stroke="${color}" stroke-width="1.1" stroke-linecap="round" opacity="0.7">
-        <line x1="27" y1="32" x2="14" y2="38"/><line x1="14" y1="38" x2="10" y2="43"/>
-        <line x1="27" y1="37" x2="13" y2="44"/><line x1="13" y1="44" x2="9"  y2="50"/>
-        <line x1="27" y1="42" x2="15" y2="50"/><line x1="15" y1="50" x2="11" y2="56"/>
-        <line x1="37" y1="32" x2="50" y2="38"/><line x1="50" y1="38" x2="54" y2="43"/>
-        <line x1="37" y1="37" x2="51" y2="44"/><line x1="51" y1="44" x2="55" y2="50"/>
-        <line x1="37" y1="42" x2="49" y2="50"/><line x1="49" y1="50" x2="53" y2="56"/>
-      </g>
-      <g opacity="0.25">
-        <ellipse cx="32" cy="34" rx="4.5" ry="1.2" fill="white"/>
-        <ellipse cx="32" cy="39" rx="4"   ry="1.2" fill="white"/>
-        <ellipse cx="32" cy="44" rx="3.5" ry="1"   fill="white"/>
-      </g>
-    </svg>
+    <div class="group relative flex items-center justify-center cursor-pointer" style="width:${size}px; height:${size}px;">
+      <div class="absolute inset-0 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none" style="background: radial-gradient(circle, ${glowColor} 0%, transparent 70%); transform: scale(1.4);"></div>
+      <img
+        src="${iconUrl}"
+        alt="Pin"
+        class="w-full h-full object-contain transition-transform duration-200 ease-out origin-bottom group-hover:scale-125 select-none pointer-events-none"
+        style="filter: drop-shadow(0 3px 5px rgba(0,0,0,0.3));"
+      />
+    </div>
+  `
+
+  return L.divIcon({
+    html,
+    className: 'custom-map-pin',
+    iconSize: [size, size],
+    iconAnchor: [size / 2, size - 2],
+    popupAnchor: [0, -size],
+  })
+}
+
+function makeHotspotPinIcon(level: "CRITICAL" | "HIGH" | "MODERATE") {
+  let iconUrl = '/assets/images/pin_safe.png'
+  if (level === 'CRITICAL') {
+    iconUrl = '/assets/images/pin_critical.png'
+  } else if (level === 'HIGH' || level === 'MODERATE') {
+    iconUrl = '/assets/images/pin_moderate.png'
+  }
+
+  const s = 42
+  const glow = riskGlow(level)
+  const html = `
+  <div style="position:relative;width:${s}px;height:${s}px;display:flex;align-items:center;justify-content:center;">
+    <div class="mosq-pulse-ring" style="background:${glow};animation-delay:0s;"></div>
+    <div class="mosq-pulse-ring" style="background:${glow};animation-delay:0.6s;"></div>
+    <img src="${iconUrl}" alt="${level}" style="width:${s}px;height:${s}px;object-fit:contain;filter:drop-shadow(0 0 8px ${glow});position:relative;z-index:2;" />
   </div>`
-  return L.divIcon({ html, className: "", iconSize: [s, s], iconAnchor: [s/2, s/2], popupAnchor: [0, -s/2] })
+  return L.divIcon({ html, className: "custom-map-pin", iconSize: [s, s], iconAnchor: [s/2, s - 4], popupAnchor: [0, -s] })
 }
 
 function TravelLayer({ travelers, onAllDone }: { travelers: TravelingMosq[]; onAllDone: () => void }) {
@@ -244,9 +258,9 @@ function MapScene({ reports, mapType, visibleHotspots, travelers, onTravelDone }
         : <TileLayer attribution="&copy; Esri"        url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"/>
       }
       {reports.map((rpt) => (
-        <CircleMarker key={rpt._id}
-          center={[rpt.lat, rpt.lng] as LatLngTuple} radius={6}
-          pathOptions={{ color:"white", fillColor: rpt.verified ? "#10b981" : "#6b7280", fillOpacity:0.9, weight:1.5 }}>
+        <Marker key={rpt._id}
+          position={[rpt.lat, rpt.lng] as LatLngTuple}
+          icon={getSimPinIcon(rpt.status, rpt.verified)}>
           <Popup>
             <div className="w-48 bg-white rounded-xl overflow-hidden shadow-xl border border-slate-100">
               <div className="bg-slate-900 px-3 py-2">
@@ -280,7 +294,7 @@ function MapScene({ reports, mapType, visibleHotspots, travelers, onTravelDone }
               </div>
             </div>
           </Popup>
-        </CircleMarker>
+        </Marker>
       ))}
       {visibleHotspots.map((hp, i) => (
         <React.Fragment key={i}>
@@ -289,7 +303,7 @@ function MapScene({ reports, mapType, visibleHotspots, travelers, onTravelDone }
             pathOptions={{ color: riskColor(hp.risk_level), fillColor: riskColor(hp.risk_level), fillOpacity:0.07, weight:1, dashArray:"5 5" }}
           />
           <Marker position={[hp.lat, hp.lng] as LatLngTuple}
-            icon={makeMosqIcon(riskColor(hp.risk_level), riskGlow(hp.risk_level))}>
+            icon={makeHotspotPinIcon(hp.risk_level)}>
             <Popup>
               <div className="w-48 bg-white rounded-xl overflow-hidden shadow-xl border border-slate-100">
                 <div className="bg-slate-900 px-3 py-2">
@@ -360,7 +374,7 @@ Unverified reports in your area remain unaddressed. Community action is our best
           <div className="flex gap-3 pt-2">
             <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-slate-200 text-[11px] font-semibold text-slate-500 hover:bg-slate-50 transition-all">Cancel</button>
             <button onClick={() => { onSend(); onClose(); }}
-              className="flex-1 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-[11px] font-semibold transition-all active:scale-95 flex items-center justify-center gap-2">
+              className="flex-1 py-2.5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-[11px] font-semibold transition-all active:scale-95 flex items-center justify-center gap-2">
               <Bell size={12}/> Send Now
             </button>
           </div>
@@ -554,7 +568,7 @@ export default function SimulationField({ onClose, reports }: SimulationFieldPro
       <div className="flex items-center justify-between px-6 py-3 bg-[#111] border-b border-white/5 shrink-0">
         <div className="flex items-center gap-4">
           <div className="w-9 h-9 rounded-xl bg-white flex items-center justify-center">
-            <img src="/assets/images/Aedify.png" alt="Aedify" className="w-6 h-6 object-contain"/>
+            <img src="/assets/logo/aedify.png" alt="Aedify" className="w-6 h-6 object-contain"/>
           </div>
           <div className="flex items-center gap-3">
             <div>

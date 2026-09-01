@@ -33,19 +33,26 @@ const translations = {
 
     // Login
     welcomeBack: 'Welcome Back',
-    signInToDashboard: 'Sign in to access your dashboard',
-    emailAddress: 'Email Address',
+    signInToDashboard: 'Sign in to access your vector surveillance dashboard',
+    emailAddress: 'Official Email Address',
     password: 'Password',
     forgotPassword: 'Forgot password?',
     enterPassword: 'Enter your password',
-    signIn: 'Sign In',
-    signingIn: 'Signing in...',
+    enterPassphrase: 'Enter your security passphrase',
+    signIn: 'Sign In to Portal',
+    signingIn: 'Authenticating...',
     secureAuth: 'Secure authentication',
     dataSecure: 'Your data is encrypted and secure',
     vecProSystem: 'Disease Surveillance',
     vectorBorne: 'Disease Tracking',
-    invalidCredentials: 'Invalid email or password. Please try again.',
-    loginError: 'An error occurred during login.',
+    invalidCredentials: 'Invalid email or password. Please verify credentials.',
+    loginError: 'An error occurred during authentication.',
+    rememberWorkstation: 'Remember workstation',
+    quickRoleSelector: 'Quick Role Selector (Demo / Testing)',
+    encrypted256: 'Encrypted 256-bit',
+    sentinelOnline: 'Sentinel Mesh Online',
+    portalAssistance: 'Portal Access Assistance',
+    close: 'Close',
 
     // Dashboard
     surveillanceOverview: 'Surveillance Overview',
@@ -237,19 +244,26 @@ const translations = {
 
     // Login
     welcomeBack: 'Maligayang Pagbabalik',
-    signInToDashboard: 'Mag-sign in para ma-access ang iyong dashboard',
-    emailAddress: 'Email Address',
+    signInToDashboard: 'Mag-sign in para ma-access ang surveillance dashboard',
+    emailAddress: 'Opisyal na Email Address',
     password: 'Password',
     forgotPassword: 'Nakalimutan ang password?',
     enterPassword: 'Ilagay ang iyong password',
-    signIn: 'Mag-sign In',
-    signingIn: 'Nag-sign in...',
+    enterPassphrase: 'Ilagay ang iyong security passphrase',
+    signIn: 'Mag-sign In sa Portal',
+    signingIn: 'Nagpapatunay...',
     secureAuth: 'Ligtas na authentication',
     dataSecure: 'Ang iyong data ay naka-encrypt at ligtas',
     vecProSystem: 'Pagsubaybay sa Sakit',
     vectorBorne: 'Pagsubaybay sa Sakit',
-    invalidCredentials: 'Hindi tamang email o password. Subukan muli.',
-    loginError: 'May naganap na error sa pag-login.',
+    invalidCredentials: 'Hindi tamang email o password. Pakisuri muli.',
+    loginError: 'May naganap na error sa pagpapatunay.',
+    rememberWorkstation: 'Tandaan ang workstation',
+    quickRoleSelector: 'Mabilisang Pagpili ng Papel (Demo / Pagsubok)',
+    encrypted256: 'Naka-encrypt na 256-bit',
+    sentinelOnline: 'Aktibo ang Sentinel Mesh',
+    portalAssistance: 'Tulong sa Pag-access ng Portal',
+    close: 'Isara',
 
     // Dashboard
     surveillanceOverview: 'Pangkalahatang-tanaw ng Pagsubaybay',
@@ -423,7 +437,7 @@ interface LanguageContextType {
 
 const LanguageContext = createContext<LanguageContextType>({
   language: 'en',
-  setLanguage: () => {},
+  setLanguage: () => { },
   t: (key: string) => key,
 })
 

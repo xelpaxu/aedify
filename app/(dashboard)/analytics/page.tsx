@@ -64,7 +64,7 @@ export default function AnalyticsPage() {
             <button
               key={f}
               onClick={() => setFilter(f)}
-              className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-all ${filter === f ? "bg-slate-900 text-white shadow-sm" : "text-slate-500 hover:text-slate-800 hover:bg-slate-50"}`}
+              className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-all ${filter === f ? "bg-primary-600 text-white shadow-sm" : "text-slate-500 hover:text-slate-800 hover:bg-slate-50"}`}
             >
               {f}
             </button>

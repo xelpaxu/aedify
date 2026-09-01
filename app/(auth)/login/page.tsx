@@ -4,24 +4,44 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '../../../src/lib/auth'
 import { useLanguage } from '../../../src/lib/translations'
-import { Eye, EyeOff, Loader2, Mail, Lock, Shield } from 'lucide-react'
+import { Eye, EyeOff, Loader2, Mail, Lock, AlertCircle } from 'lucide-react'
 import Image from 'next/image'
+
+const DEMO_ACCOUNTS = [
+  { label: 'LGU Admin', email: 'lgu@aedify.com' },
+  { label: 'Calumpang', email: 'calumpang@aedify.com' },
+  { label: 'San Juan', email: 'sanjuan@aedify.com' },
+  { label: 'Fundidor', email: 'southfundidor@aedify.com' },
+  { label: 'Admin', email: 'admin@aedify.com' },
+]
 
 export default function LoginPage() {
   const { login, user, isLoading } = useAuth()
-  const { t } = useLanguage()
+  const { t, language, setLanguage } = useLanguage()
   const router = useRouter()
+
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPw, setShowPw] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [rememberMe, setRememberMe] = useState(true)
+  const [selectedDemo, setSelectedDemo] = useState<string | null>(null)
 
   useEffect(() => {
     if (user) {
       router.push('/dashboard')
     }
   }, [user, router])
+
+  const handleSelectDemo = (demo: typeof DEMO_ACCOUNTS[0]) => {
+    setSelectedDemo(demo.email)
+    setEmail(demo.email)
+    if (!password) {
+      setPassword('password123')
+    }
+    setError(null)
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -31,200 +51,237 @@ export default function LoginPage() {
     try {
       const success = await login(email, password)
       if (!success) {
-        setError(t('invalidCredentials'))
+        setError(t('invalidCredentials') || 'Invalid email or password.')
       }
-    } catch (error) {
-      setError(t('loginError'))
-      console.error('Login error:', error)
+    } catch (err) {
+      setError(t('loginError') || 'An error occurred during sign in.')
+      console.error('Login error:', err)
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <div className="min-h-screen flex">
-      {/* Left panel - Branding */}
-      <div className="hidden lg:flex lg:w-1/2 relative bg-slate-900 overflow-hidden">
-        {/* Decorative grid pattern */}
-        <div className="absolute inset-0 opacity-[0.03]" style={{
-          backgroundImage: `url("data:image/svg+xml,%3csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3e%3cpath d='M0 40L40 0H20L0 20M40 40V20L20 40' fill='%23fff' fill-opacity='1'/%3e%3c/svg%3e")`,
-          backgroundSize: '40px 40px'
-        }} />
+    <div className="min-h-screen w-full flex flex-col justify-between items-center bg-[#070b13] text-slate-100 p-4 sm:p-6 relative overflow-hidden selection:bg-teal-500/30 selection:text-teal-200">
+      
+      {/* Soft ambient center glow */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[550px] h-[550px] bg-gradient-to-br from-teal-500/10 via-cyan-600/5 to-transparent rounded-full blur-[110px] pointer-events-none" />
 
-        <div className="relative z-10 flex flex-col justify-between p-12 text-white w-full">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-white/10 backdrop-blur-sm flex items-center justify-center border border-white/10">
+      {/* Top bar */}
+      <header className="w-full max-w-4xl flex justify-between items-center z-10 pt-2">
+        <div className="flex items-center gap-2.5">
+          <div className="w-6 h-6 relative flex items-center justify-center">
+            <Image
+              src="/assets/logo/vecpro.png"
+              alt="VEC-PRO"
+              width={22}
+              height={22}
+              className="object-contain"
+              priority
+            />
+          </div>
+          <span className="text-xs font-semibold text-slate-400 tracking-wider">
+            VEC-PRO
+          </span>
+        </div>
+
+        {/* Language switch */}
+        <div className="flex items-center bg-slate-900/90 border border-slate-800 rounded-lg p-0.5 text-xs">
+          <button
+            type="button"
+            onClick={() => setLanguage('en')}
+            className={`px-2 py-0.5 rounded-md font-medium transition cursor-pointer ${
+              language === 'en'
+                ? 'bg-teal-500/20 text-teal-300 font-semibold'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            EN
+          </button>
+          <button
+            type="button"
+            onClick={() => setLanguage('tl')}
+            className={`px-2 py-0.5 rounded-md font-medium transition cursor-pointer ${
+              language === 'tl'
+                ? 'bg-teal-500/20 text-teal-300 font-semibold'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            TL
+          </button>
+        </div>
+      </header>
+
+      {/* Center Auth Card */}
+      <main className="w-full max-w-[390px] my-auto z-10 py-6">
+        <div className="bg-slate-900/80 border border-slate-800/90 backdrop-blur-2xl rounded-2xl p-7 sm:p-8 shadow-2xl shadow-black/70">
+          
+          {/* Logo & Heading */}
+          <div className="flex flex-col items-center text-center mb-6">
+            <div className="w-14 h-14 relative flex items-center justify-center mb-3">
               <Image
-                src="/assets/images/favicon.ico"
+                src="/assets/logo/aedify.png"
                 alt="Aedify"
-                width={28}
-                height={28}
-                className="object-contain brightness-0 invert"
+                width={56}
+                height={56}
+                className="object-contain drop-shadow-md"
+                priority
               />
             </div>
+            
+            <h1 className="text-xl font-bold tracking-tight text-white">
+              {t('welcomeBack') || 'Sign in to Aedify'}
+            </h1>
+            <p className="text-xs text-slate-400 mt-1">
+              Vector Disease Surveillance
+            </p>
+          </div>
+
+          {/* Quick Demo Selector */}
+          <div className="mb-5">
+            <p className="text-[11px] font-medium text-slate-400 mb-1.5 text-center">
+              Quick demo login:
+            </p>
+            <div className="flex flex-wrap justify-center gap-1.5">
+              {DEMO_ACCOUNTS.map((demo) => {
+                const isSelected = selectedDemo === demo.email || email === demo.email
+                return (
+                  <button
+                    key={demo.email}
+                    type="button"
+                    onClick={() => handleSelectDemo(demo)}
+                    className={`px-2 py-1 rounded-md text-[11px] font-medium transition cursor-pointer border ${
+                      isSelected
+                        ? 'bg-teal-500/20 border-teal-500/60 text-teal-300'
+                        : 'bg-slate-800/40 border-slate-700/50 text-slate-400 hover:bg-slate-800 hover:text-slate-200'
+                    }`}
+                  >
+                    {demo.label}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Error Alert */}
+          {error && (
+            <div className="mb-4 p-3 rounded-xl bg-red-950/40 border border-red-800/50 text-red-300 text-xs font-medium flex items-center gap-2 animate-fade-in">
+              <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
+              <span>{error}</span>
+            </div>
+          )}
+
+          {/* Login Form */}
+          <form onSubmit={handleSubmit} className="space-y-3.5">
+            
+            {/* Email Field */}
             <div>
-              <h1 className="font-bold text-lg leading-none">Aedify</h1>
-              <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mt-0.5">VEC-PRO</p>
-            </div>
-          </div>
-
-          <div className="max-w-md">
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-white/10 backdrop-blur-sm rounded-full border border-white/10 mb-6">
-              <Shield size={14} className="text-slate-300" />
-              <span className="text-xs font-semibold text-white/80">{t('vectorBorne') || 'Vector-Borne Disease Surveillance'}</span>
-            </div>
-            <h2 className="text-4xl font-bold leading-tight tracking-tight mb-4">
-              {t('monitoringTitle') || 'Protecting communities through intelligent monitoring'}
-            </h2>
-            <p className="text-base text-white/60 leading-relaxed">
-              {t('monitoringDesc') || 'AI-powered detection and real-time risk mapping for mosquito-borne diseases in Molo District, Iloilo City.'}
-            </p>
-          </div>
-
-          <div className="flex items-center gap-6 text-sm text-white/40">
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-emerald-400" />
-              <span>Real-time Surveillance</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-slate-400" />
-              <span>AI Detection</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-amber-400" />
-              <span>Risk Mapping</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Right panel - Login form */}
-      <div className="flex-1 flex items-center justify-center p-6 sm:p-12 bg-slate-50">
-        <div className="w-full max-w-[400px]">
-          {/* Mobile logo */}
-          <div className="lg:hidden text-center mb-8">
-            <div className="relative inline-block mb-4">
-              <div className="w-16 h-16 mx-auto rounded-2xl bg-white shadow-lg shadow-slate-200/50 flex items-center justify-center border border-slate-200/60">
-                <Image
-                  src="/assets/images/favicon.ico"
-                  alt="Aedify Logo"
-                  width={40}
-                  height={40}
-                  className="object-contain"
-                  priority
-                />
-              </div>
-            </div>
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900">Aedify</h1>
-            <p className="text-sm font-medium text-slate-500 tracking-wider uppercase mt-1">
-              {t('vecProSystem') || 'VEC-PRO System'}
-            </p>
-          </div>
-
-          <div className="mb-8">
-            <h2 className="text-2xl font-bold tracking-tight text-slate-900">
-              {t('welcomeBack') || 'Welcome back'}
-            </h2>
-            <p className="text-sm text-slate-500 mt-1.5">
-              {t('signInToDashboard') || 'Sign in to your surveillance dashboard'}
-            </p>
-          </div>
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1.5">
-                {t('emailAddress') || 'Email address'}
+              <label className="block text-xs font-medium text-slate-300 mb-1">
+                {t('emailAddress') || 'Email'}
               </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-                  <Mail className="h-4 w-4 text-slate-400" />
-                </div>
+              <div className="relative group">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-teal-400 transition-colors pointer-events-none" />
                 <input
                   type="email"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="admin@aedify.com"
+                  onChange={(e) => {
+                    setEmail(e.target.value)
+                    setSelectedDemo(null)
+                  }}
+                  placeholder="name@aedify.com"
                   required
+                  autoComplete="email"
                   disabled={loading || isLoading}
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 bg-white text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200 focus:border-slate-300 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full pl-9 pr-3.5 py-2.5 rounded-xl border border-slate-700/80 bg-slate-950/70 text-sm text-white placeholder-slate-400 focus:outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 transition disabled:opacity-50"
                 />
               </div>
             </div>
 
+            {/* Password Field */}
             <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="block text-xs font-semibold text-slate-600">
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-xs font-medium text-slate-300">
                   {t('password') || 'Password'}
                 </label>
-                <button
-                  type="button"
-                  className="text-xs font-medium text-slate-500 hover:text-slate-700 transition-colors"
-                >
-                  {t('forgotPassword') || 'Forgot password?'}
-                </button>
               </div>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-                  <Lock className="h-4 w-4 text-slate-400" />
-                </div>
+              <div className="relative group">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-teal-400 transition-colors pointer-events-none" />
                 <input
                   type={showPw ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder={t('enterPassword') || 'Enter your password'}
+                  placeholder="••••••••••••"
                   required
+                  autoComplete="current-password"
                   disabled={loading || isLoading}
-                  className="w-full pl-10 pr-10 py-2.5 rounded-xl border border-slate-200 bg-white text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200 focus:border-slate-300 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full pl-9 pr-10 py-2.5 rounded-xl border border-slate-700/80 bg-slate-950/70 text-sm text-white placeholder-slate-400 focus:outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 transition disabled:opacity-50"
                 />
                 <button
                   type="button"
-                  onClick={() => setShowPw((v) => !v)}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 transition"
+                  onClick={() => setShowPw(!showPw)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 transition p-1 cursor-pointer"
                   tabIndex={-1}
                   disabled={loading || isLoading}
+                  aria-label={showPw ? 'Hide password' : 'Show password'}
                 >
-                  {showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
             </div>
 
-            {error && (
-              <div className="flex items-center gap-2.5 p-3 bg-rose-50 border border-rose-200/60 rounded-xl">
-                <div className="w-5 h-5 rounded-full bg-rose-100 flex items-center justify-center shrink-0">
-                  <span className="text-rose-600 text-[10px] font-bold">!</span>
-                </div>
-                <p className="text-xs font-medium text-rose-600">{error}</p>
-              </div>
-            )}
+            {/* Remember Me */}
+            <div className="flex items-center justify-between pt-0.5">
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  className="w-3.5 h-3.5 rounded border-slate-700 bg-slate-950 text-teal-500 focus:ring-teal-500/20 transition cursor-pointer"
+                />
+                <span className="text-xs text-slate-400">
+                  {t('rememberWorkstation') || 'Remember me'}
+                </span>
+              </label>
+            </div>
 
+            {/* Submit Button */}
             <button
               type="submit"
               disabled={loading || isLoading}
-              className="relative w-full flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 disabled:opacity-60 text-white font-semibold text-sm py-3 rounded-xl transition-all mt-2"
+              className="w-full mt-2 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-teal-500 hover:bg-teal-400 active:scale-[0.99] text-slate-950 font-semibold text-sm shadow-md shadow-teal-950/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
             >
               {loading ? (
                 <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  {t('signingIn') || 'Signing in...'}
+                  <Loader2 className="w-4 h-4 animate-spin text-slate-950" />
+                  <span>{t('signingIn') || 'Signing in...'}</span>
                 </>
               ) : (
-                t('signIn') || 'Sign in'
+                <span>{t('signIn') || 'Sign In'}</span>
               )}
             </button>
-
-            <div className="flex items-center justify-center gap-2 pt-2">
-              <Lock className="h-3 w-3 text-slate-300" />
-              <span className="text-xs text-slate-400">
-                {t('dataSecure') || 'Your data is encrypted and secure'}
-              </span>
-            </div>
           </form>
 
-          <p className="text-center text-xs text-slate-400 mt-8">
-            &copy; {new Date().getFullYear()} Aedify VEC-PRO. All rights reserved.
-          </p>
         </div>
-      </div>
+      </main>
+
+      {/* Footer */}
+      <footer className="w-full max-w-sm text-center z-10 pb-2">
+        <div className="flex items-center justify-center gap-1.5 text-[11px] text-slate-400 font-medium">
+          <span>Aedify</span>
+          <span>•</span>
+          <div className="flex items-center gap-1">
+            <Image
+              src="/assets/logo/vecpro.png"
+              alt="VEC-PRO"
+              width={13}
+              height={13}
+              className="object-contain"
+            />
+            <span>VEC-PRO Surveillance</span>
+          </div>
+        </div>
+      </footer>
+
     </div>
   )
 }

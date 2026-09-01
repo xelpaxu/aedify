@@ -19,7 +19,7 @@ export const MetricCard: React.FC<MetricCardProps> = ({ title, value, subtitle, 
           <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-widest">{title}</p>
           <h3 className="text-3xl font-bold text-slate-900 mt-1 tracking-tight">{value}</h3>
         </div>
-        <div className="w-11 h-11 rounded-xl bg-slate-100 text-slate-500 flex items-center justify-center">
+        <div className="w-11 h-11 rounded-xl bg-primary-50 text-primary-600 flex items-center justify-center">
           {icon}
         </div>
       </div>

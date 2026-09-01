@@ -20,7 +20,7 @@ export default function SettingsPage() {
            <h1 className="text-2xl font-bold tracking-tight text-slate-900 mb-0.5">{t('systemTuning')}</h1>
            <p className="text-sm text-slate-500">{t('adjustParams')}</p>
         </div>
-        <button className="flex items-center gap-2 px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl transition-all font-semibold active:scale-[0.98] text-sm">
+        <button className="flex items-center gap-2 px-5 py-2.5 bg-primary-600 hover:bg-primary-700 text-white rounded-xl transition-all font-semibold active:scale-[0.98] text-sm">
            <Save size={16} /> {t('saveConfig')}
         </button>
       </div>
@@ -30,7 +30,7 @@ export default function SettingsPage() {
         {/* Left column */}
         <div className="space-y-5">
           <div className="flex items-center gap-2.5 mb-4">
-             <div className="p-2 bg-slate-100 text-slate-600 rounded-xl">
+             <div className="p-2 bg-primary-50 text-primary-600 rounded-xl">
                 <Wifi size={16} />
              </div>
              <h3 className="text-base font-bold text-slate-800">{t('coreConfig')}</h3>
@@ -40,8 +40,8 @@ export default function SettingsPage() {
             {/* Weather API */}
             <div className="flex items-center justify-between py-4 first:pt-0 last:pb-0">
               <div className="flex gap-3">
-                 <div className="w-10 h-10 rounded-xl bg-slate-100 text-slate-500 flex items-center justify-center shrink-0">
-                    <Wifi size={16} />
+                 <div className="w-10 h-10 rounded-xl bg-primary-50 text-primary-600 flex items-center justify-center shrink-0">
+                     <Wifi size={16} />
                  </div>
                  <div>
                    <p className="font-semibold text-slate-800 text-sm">{t('weatherApi')}</p>
@@ -50,7 +50,7 @@ export default function SettingsPage() {
               </div>
               <button 
                  onClick={() => setWeatherApi(!weatherApi)}
-                 className={`w-11 h-6 rounded-full relative transition-colors duration-300 shadow-inner ${weatherApi ? 'bg-slate-900' : 'bg-slate-300'}`}
+                 className={`w-11 h-6 rounded-full relative transition-colors duration-300 shadow-inner ${weatherApi ? 'bg-primary-600' : 'bg-slate-300'}`}
               >
                  <span className={`absolute top-0.5 left-0.5 bg-white w-5 h-5 rounded-full shadow transition-transform duration-300 ${weatherApi ? 'translate-x-5' : 'translate-x-0'}`} />
               </button>
@@ -59,8 +59,8 @@ export default function SettingsPage() {
             {/* City GIS */}
             <div className="flex items-center justify-between py-4">
               <div className="flex gap-3">
-                 <div className="w-10 h-10 rounded-xl bg-slate-100 text-slate-500 flex items-center justify-center shrink-0">
-                    <MapIcon size={16} />
+                 <div className="w-10 h-10 rounded-xl bg-primary-50 text-primary-600 flex items-center justify-center shrink-0">
+                     <MapIcon size={16} />
                  </div>
                  <div>
                    <p className="font-semibold text-slate-800 text-sm">{t('cityGIS')}</p>
@@ -69,7 +69,7 @@ export default function SettingsPage() {
               </div>
               <button 
                  onClick={() => setGisApi(!gisApi)}
-                 className={`w-11 h-6 rounded-full relative transition-colors duration-300 shadow-inner ${gisApi ? 'bg-slate-900' : 'bg-slate-300'}`}
+                 className={`w-11 h-6 rounded-full relative transition-colors duration-300 shadow-inner ${gisApi ? 'bg-primary-600' : 'bg-slate-300'}`}
               >
                  <span className={`absolute top-0.5 left-0.5 bg-white w-5 h-5 rounded-full shadow transition-transform duration-300 ${gisApi ? 'translate-x-5' : 'translate-x-0'}`} />
               </button>
@@ -94,7 +94,7 @@ export default function SettingsPage() {
         <div className="space-y-5">
           <div className="flex items-center justify-between mb-4">
              <div className="flex items-center gap-2.5">
-                <div className="p-2 bg-slate-100 text-slate-600 rounded-xl">
+                <div className="p-2 bg-primary-50 text-primary-600 rounded-xl">
                    <SlidersHorizontal size={16} />
                 </div>
                 <h3 className="text-base font-bold text-slate-800">{t('abmConstants')}</h3>
@@ -138,7 +138,7 @@ export default function SettingsPage() {
           {/* Language Settings */}
           <div className="bg-white p-5 rounded-2xl border border-slate-200/60">
             <div className="flex items-center gap-2.5 mb-4">
-               <div className="p-2 bg-slate-100 text-slate-600 rounded-xl">
+               <div className="p-2 bg-primary-50 text-primary-600 rounded-xl">
                   <Globe size={16} />
                </div>
                <h3 className="text-base font-bold text-slate-800">{t('language')}</h3>
@@ -149,7 +149,7 @@ export default function SettingsPage() {
                 onClick={() => setLanguage('en')}
                 className={`flex-1 py-3 rounded-xl font-semibold text-sm transition-all border ${
                   language === 'en'
-                    ? 'bg-slate-900 text-white border-slate-900'
+                    ? 'bg-primary-600 text-white border-primary-600'
                     : 'bg-white text-slate-600 border-slate-200/60 hover:bg-slate-50'
                 }`}
               >
@@ -159,7 +159,7 @@ export default function SettingsPage() {
                 onClick={() => setLanguage('tl')}
                 className={`flex-1 py-3 rounded-xl font-semibold text-sm transition-all border ${
                   language === 'tl'
-                    ? 'bg-slate-900 text-white border-slate-900'
+                    ? 'bg-primary-600 text-white border-primary-600'
                     : 'bg-white text-slate-600 border-slate-200/60 hover:bg-slate-50'
                 }`}
               >

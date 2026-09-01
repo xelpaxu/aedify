@@ -152,3 +152,9 @@ body {
   border-radius:50%;
   animation: pulse-ring 1.5s ease-out infinite;
 }
+
+/* Leaflet custom map pin reset */
+.leaflet-div-icon.custom-map-pin {
+  background: transparent !important;
+  border: none !important;
+}
