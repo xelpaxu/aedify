@@ -36,37 +36,7 @@ import { useLanguage } from '../../../src/lib/translations'
 import { useReverseGeocode, getLocationHierarchy, extractConfidenceScore } from '../../../src/lib/geoUtils'
 import { mockAssignments, mockReports } from '../../../src/lib/mockData'
 import Link from "next/link"
-
-// Helper to validate and create image URL from base64 or path (matching reports/page.tsx logic)
-function getValidImageUrl(img: any): string | null {
-  if (!img || typeof img !== 'string') return null
-  const cleanImg = img.trim()
-  if (cleanImg.length === 0) return null
-
-  if (
-    cleanImg.startsWith('http://') ||
-    cleanImg.startsWith('https://') ||
-    cleanImg.startsWith('data:')
-  ) {
-    return cleanImg
-  }
-
-  if (cleanImg.startsWith('/assets/') || cleanImg.startsWith('/images/')) {
-    return cleanImg
-  }
-
-  if (cleanImg.startsWith('assets/') || cleanImg.startsWith('images/')) {
-    return `/${cleanImg}`
-  }
-
-  const normalized = cleanImg.replace(/[\s\r\n]/g, '')
-  let mime = 'image/jpeg'
-  if (normalized.startsWith('iVBORw0KGgo')) mime = 'image/png'
-  else if (normalized.startsWith('R0lGOD')) mime = 'image/gif'
-  else if (normalized.startsWith('UklGR')) mime = 'image/webp'
-
-  return `data:${mime};base64,${normalized}`
-}
+import { getReportPreview } from "@/src/lib/reportImages"
 
 // Helper for relative time
 function getTimeSince(timestamp: string | number | undefined) {
@@ -81,12 +51,6 @@ function getTimeSince(timestamp: string | number | undefined) {
   if (diffMins < 60) return `${diffMins}m ago`
   if (diffHours < 24) return `${diffHours}h ago`
   return `${diffDays}d ago`
-}
-
-function getDisplayImage(report: any): string | null {
-  if (!report) return null
-  const img = report.imageUri || report.processedImage || report.rawPhoto || report.imageUrl || ''
-  return getValidImageUrl(img)
 }
 
 function getStatusColor(status: string) {
@@ -118,7 +82,7 @@ function PendingReportCard({
   onAssign: (reportId: string) => void
 }) {
   const locHierarchy = useReverseGeocode(report.lat, report.lng, report.locationName || report.location)
-  const rawImageUrl = useMemo(() => getDisplayImage(report), [report])
+  const rawImageUrl = useMemo(() => getReportPreview(report), [report])
   const [imgSrc, setImgSrc] = useState(rawImageUrl)
 
   useEffect(() => {
@@ -236,7 +200,7 @@ function AssignmentCard({
   const lat = assignment.locationLat || report?.lat
   const lng = assignment.locationLng || report?.lng
   const locHierarchy = useReverseGeocode(lat, lng, assignment.location || report?.locationName)
-  const rawImageUrl = useMemo(() => getDisplayImage(report || assignment), [report, assignment])
+  const rawImageUrl = useMemo(() => getReportPreview(report) || getReportPreview(assignment), [report, assignment])
   const [imgSrc, setImgSrc] = useState(rawImageUrl)
 
   useEffect(() => {
@@ -495,9 +459,9 @@ export default function AssignmentsPage() {
         lat: r.lat,
         lng: r.lng,
         verified: r.verified !== false,
-        imageUri: r.imageUri || r.processedImage || r.rawPhoto || '',
-        processedImage: r.processedImage || r.imageUri || r.rawPhoto || '',
-        rawPhoto: r.rawPhoto || r.processedImage || r.imageUri || '',
+        imageUri: r.imageUri || r.rawPhoto || '',
+        processedImage: r.processedImage || '',
+        rawPhoto: r.rawPhoto || r.imageUri || '',
       }))
     }
     if (convexReports !== undefined && convexReports.length === 0) {
@@ -602,17 +566,14 @@ export default function AssignmentsPage() {
   return (
     <div className="h-full flex flex-col animate-fade-in-up max-w-[1600px] w-full mx-auto pb-10">
       {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-4 mb-6 shrink-0">
+      <div className="flex flex-wrap items-center justify-between gap-4 mb-6 shrink-0 rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <div>
           <div className="flex items-center gap-2.5">
-            <h1 className="text-2xl md:text-3xl font-black tracking-tight text-slate-900">
+            <h1 className="text-2xl md:text-3xl font-black tracking-tight text-slate-900 dark:text-white">
               {t('fieldAssignments')}
             </h1>
-            <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-primary-100 text-primary-800 border border-primary-200">
-              Molo District Tanod Response
-            </span>
           </div>
-          <p className="text-sm text-slate-500 mt-1">{t('manageDispatch')}</p>
+          <p className="text-sm text-slate-500 mt-1 dark:text-slate-400">{t('manageDispatch')}</p>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -633,7 +594,6 @@ export default function AssignmentsPage() {
           className={`px-4 py-2 text-xs font-bold rounded-xl transition-all flex items-center gap-2 ${activeTab === 'pending' ? 'bg-white text-primary-800 shadow-sm' : 'text-slate-600 hover:text-slate-900'
             }`}
         >
-          <AlertTriangle size={14} className={activeTab === 'pending' ? 'text-amber-500' : 'text-slate-400'} />
           Pending Assignments
           {stats.pending > 0 && (
             <span className={`ml-1 px-2 py-0.5 rounded-full text-[10px] font-black ${activeTab === 'pending' ? 'bg-amber-100 text-amber-800' : 'bg-slate-200 text-slate-600'}`}>
@@ -648,7 +608,6 @@ export default function AssignmentsPage() {
           className={`px-4 py-2 text-xs font-bold rounded-xl transition-all flex items-center gap-2 ${activeTab === 'assignments' ? 'bg-white text-primary-800 shadow-sm' : 'text-slate-600 hover:text-slate-900'
             }`}
         >
-          <ClipboardList size={14} className={activeTab === 'assignments' ? 'text-primary-600' : 'text-slate-400'} />
           Active Assignments
           {stats.total > 0 && (
             <span className={`ml-1 px-2 py-0.5 rounded-full text-[10px] font-black ${activeTab === 'assignments' ? 'bg-primary-100 text-primary-800' : 'bg-slate-200 text-slate-600'}`}>

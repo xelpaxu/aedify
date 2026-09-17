@@ -9,6 +9,7 @@ import {
   Map,
   ClipboardList,
   Settings,
+  UserRound,
   LogOut,
   ChevronRight,
 } from 'lucide-react'
@@ -40,6 +41,7 @@ export function Sidebar() {
     {
       label: t('system') || 'System',
       items: [
+        { href: '/profile', icon: UserRound, label: 'Profile' },
         { href: '/settings', icon: Settings, label: t('settings') },
       ],
     },

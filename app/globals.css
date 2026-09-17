@@ -1,6 +1,8 @@
 @import "tailwindcss";
 @import "leaflet/dist/leaflet.css";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme inline {
   --color-primary-50: #f0fdfa;
   --color-primary-100: #ccfbf1;
@@ -23,13 +25,17 @@
 :root {
   --background: #f8fafc;
   --foreground: #0f172a;
+  --surface: #ffffff;
+  --surface-subtle: #f1f5f9;
+  --border-color: #e2e8f0;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+.dark {
+  --background: #090e18;
+  --foreground: #e2e8f0;
+  --surface: #111827;
+  --surface-subtle: #0b1220;
+  --border-color: #273449;
 }
 
 * {
@@ -46,6 +52,173 @@ body {
   color: var(--foreground);
   font-family: var(--font-sans, 'Inter', system-ui, -apple-system, sans-serif);
 }
+
+.profile-input {
+  width: 100%;
+  border-radius: 0.75rem;
+  border: 1px solid rgb(226 232 240);
+  background: white;
+  padding: 0.7rem 0.85rem;
+  font-size: 0.875rem;
+  color: rgb(15 23 42);
+  outline: none;
+  transition: border-color 150ms, box-shadow 150ms;
+}
+
+.profile-input:focus {
+  border-color: rgb(20 184 166);
+  box-shadow: 0 0 0 3px rgb(20 184 166 / 0.12);
+}
+
+
+/* Dark-theme compatibility for the app's existing light utility surfaces. */
+.dark .bg-white,
+.dark [class~="bg-white/80"],
+.dark [class~="bg-white/50"] {
+  background-color: #111827 !important;
+}
+
+.dark [class~="bg-[#f8fafc]"],
+.dark .bg-slate-50,
+.dark [class~="bg-slate-50/80"],
+.dark [class~="bg-slate-50/60"],
+.dark [class~="bg-slate-50/50"] {
+  background-color: #0b1220 !important;
+}
+
+.dark .bg-slate-100 {
+  background-color: #172033 !important;
+}
+
+.dark .bg-slate-200,
+.dark .bg-slate-300,
+.dark [class~="bg-slate-200/70"],
+.dark [class~="bg-slate-200/60"] {
+  background-color: #334155 !important;
+}
+
+.dark .bg-primary-50 {
+  background-color: rgb(20 184 166 / 0.12) !important;
+}
+
+.dark .bg-amber-50 {
+  background-color: rgb(245 158 11 / 0.12) !important;
+}
+
+.dark .bg-rose-50,
+.dark [class~="bg-rose-50/80"] { background-color: rgb(244 63 94 / 0.12) !important; }
+.dark .bg-emerald-50,
+.dark [class~="bg-emerald-50/80"] { background-color: rgb(16 185 129 / 0.12) !important; }
+.dark .bg-blue-50,
+.dark .bg-indigo-50 { background-color: rgb(59 130 246 / 0.12) !important; }
+.dark .bg-rose-100,
+.dark .bg-emerald-100,
+.dark .bg-amber-100,
+.dark .bg-blue-100,
+.dark .bg-indigo-100 { background-color: rgb(51 65 85 / 0.72) !important; }
+
+.dark .text-slate-900,
+.dark .text-slate-800 {
+  color: #f1f5f9 !important;
+}
+
+.dark .text-slate-700,
+.dark .text-slate-600 {
+  color: #cbd5e1 !important;
+}
+
+.dark .text-slate-500 {
+  color: #94a3b8 !important;
+}
+
+.dark .text-slate-400 {
+  color: #94a3b8 !important;
+}
+
+.dark .text-primary-700,
+.dark .text-primary-800,
+.dark .text-primary-900,
+.dark .text-primary-950 { color: #5eead4 !important; }
+.dark .text-rose-600,
+.dark .text-rose-700,
+.dark .text-rose-800,
+.dark .text-rose-900 { color: #fda4af !important; }
+.dark .text-amber-600,
+.dark .text-amber-700,
+.dark .text-amber-800,
+.dark .text-amber-900 { color: #fcd34d !important; }
+.dark .text-emerald-600,
+.dark .text-emerald-700,
+.dark .text-emerald-800,
+.dark .text-emerald-900 { color: #6ee7b7 !important; }
+.dark .text-blue-600,
+.dark .text-blue-700,
+.dark .text-blue-800,
+.dark .text-blue-900,
+.dark .text-indigo-600,
+.dark .text-indigo-700,
+.dark .text-indigo-800,
+.dark .text-indigo-900 { color: #93c5fd !important; }
+
+.dark .border-slate-100,
+.dark [class~="border-slate-100/80"],
+.dark .border-slate-200,
+.dark [class~="border-slate-200/80"],
+.dark [class~="border-slate-200/60"],
+.dark [class~="border-slate-200/50"],
+.dark [class~="border-slate-200/40"] {
+  border-color: #273449 !important;
+}
+
+.dark .border-primary-100,
+.dark .border-primary-200,
+.dark .border-primary-300,
+.dark .border-rose-200,
+.dark [class~="border-rose-200/60"],
+.dark [class~="border-rose-200/80"],
+.dark .border-amber-200,
+.dark [class~="border-amber-200/60"],
+.dark [class~="border-amber-200/80"],
+.dark .border-emerald-200,
+.dark [class~="border-emerald-200/60"],
+.dark .border-blue-200,
+.dark [class~="border-blue-200/60"],
+.dark .border-indigo-200,
+.dark [class~="border-indigo-200/80"] {
+  border-color: rgb(71 85 105 / 0.75) !important;
+}
+
+.dark .divide-slate-100 > :not(:last-child) {
+  border-color: #273449 !important;
+}
+
+.dark [class~="ring-slate-200/50"],
+.dark [class~="ring-slate-200"] {
+  --tw-ring-color: rgb(51 65 85 / 0.7) !important;
+}
+
+.dark [class~="hover:bg-slate-50"]:hover,
+.dark [class~="hover:bg-slate-50/80"]:hover,
+.dark [class~="hover:bg-slate-100"]:hover,
+.dark [class~="hover:bg-slate-200"]:hover,
+.dark [class~="hover:bg-slate-200/60"]:hover {
+  background-color: #1e293b !important;
+}
+
+.dark [class~="hover:text-slate-600"]:hover,
+.dark [class~="hover:text-slate-700"]:hover {
+  color: #f1f5f9 !important;
+}
+
+.dark select,
+.dark input,
+.dark textarea {
+  color-scheme: dark;
+}
+
+.dark input::placeholder,
+.dark textarea::placeholder { color: #64748b; }
+.dark [class*="shadow-slate-200"] { --tw-shadow-color: rgb(0 0 0 / 0.35) !important; }
 
 /* Custom scrollbar */
 ::-webkit-scrollbar {

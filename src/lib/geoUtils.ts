@@ -247,3 +247,115 @@ export function extractConfidenceScore(reportOrAssignment: any): number {
   }
   return 85
 }
+
+export interface LocationCluster<T = any> {
+  id: string
+  lat: number
+  lng: number
+  locationName: string
+  locationHierarchy: LocationHierarchy
+  reports: T[]
+  totalReports: number
+  criticalCount: number
+  pendingCount: number
+  verifiedCount: number
+  resolvedCount: number
+  isAllResolved: boolean
+  highestRisk: 'CRITICAL' | 'MODERATE' | 'SAFE' | 'PENDING' | 'RESOLVED'
+  topReport: T
+}
+
+/**
+ * Groups reports by exact geographic location / coordinates without artificial offsets.
+ */
+export function groupReportsByLocation<T extends { lat?: number; lng?: number; coordinates?: [number, number]; locationName?: string; location?: string; status?: string; verified?: boolean; risk?: string }>(
+  reports: T[]
+): LocationCluster<T>[] {
+  const clustersMap = new Map<string, T[]>()
+
+  reports.forEach(report => {
+    const lat = typeof report.lat === 'number' && !isNaN(report.lat)
+      ? report.lat
+      : report.coordinates?.[0] ?? 10.6953
+    const lng = typeof report.lng === 'number' && !isNaN(report.lng)
+      ? report.lng
+      : report.coordinates?.[1] ?? 122.5447
+
+    const key = `${lat.toFixed(4)},${lng.toFixed(4)}`
+    if (!clustersMap.has(key)) {
+      clustersMap.set(key, [])
+    }
+    clustersMap.get(key)!.push(report)
+  })
+
+  const result: LocationCluster<T>[] = []
+
+  clustersMap.forEach((groupedReports, key) => {
+    if (groupedReports.length === 0) return
+    const first = groupedReports[0]
+    const lat = typeof first.lat === 'number' && !isNaN(first.lat)
+      ? first.lat
+      : first.coordinates?.[0] ?? 10.6953
+    const lng = typeof first.lng === 'number' && !isNaN(first.lng)
+      ? first.lng
+      : first.coordinates?.[1] ?? 122.5447
+    const hierarchy = getLocationHierarchy(first)
+
+    let criticalCount = 0
+    let pendingCount = 0
+    let verifiedCount = 0
+    let resolvedCount = 0
+
+    groupedReports.forEach(r => {
+      const s = r.status?.toLowerCase() || ''
+      const risk = (r as any).risk?.toLowerCase() || ''
+      if (s === 'resolved' || s === 'completed') {
+        resolvedCount++
+      } else if (s === 'critical' || risk === 'high') {
+        criticalCount++
+      } else if (r.verified || s === 'verified' || risk === 'low') {
+        verifiedCount++
+      } else {
+        pendingCount++
+      }
+    })
+
+    const isAllResolved = resolvedCount === groupedReports.length
+
+    let highestRisk: LocationCluster['highestRisk'] = 'SAFE'
+    if (criticalCount > 0) {
+      highestRisk = 'CRITICAL'
+    } else if (pendingCount > 0) {
+      highestRisk = 'PENDING'
+    } else if (verifiedCount > 0) {
+      highestRisk = 'MODERATE'
+    } else if (isAllResolved) {
+      highestRisk = 'RESOLVED'
+    }
+
+    const topReport = groupedReports.find(r => {
+      const s = r.status?.toLowerCase() || ''
+      return s === 'critical' || (r as any).risk === 'High'
+    }) || groupedReports.find(r => r.status?.toLowerCase() !== 'resolved') || first
+
+    result.push({
+      id: `loc-${key}`,
+      lat,
+      lng,
+      locationName: first.locationName || first.location || hierarchy.formatted,
+      locationHierarchy: hierarchy,
+      reports: groupedReports,
+      totalReports: groupedReports.length,
+      criticalCount,
+      pendingCount,
+      verifiedCount,
+      resolvedCount,
+      isAllResolved,
+      highestRisk,
+      topReport
+    })
+  })
+
+  return result
+}
+

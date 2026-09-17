@@ -44,7 +44,7 @@ export const updateProfile = mutation({
     if (!identity) throw new Error("Not authenticated");
 
     // Find or create user
-    let user = await ctx.db
+    const user = await ctx.db
       .query("users")
       .withIndex("by_clerkUserId", (q) => q.eq("clerkUserId", identity.subject))
       .unique();
@@ -107,14 +107,68 @@ export const getUserByUid = query({
     if (!user) return null;
 
     return {
-      id: user._id,
-      uid: user.uid || "",
-      username: user.username || "",
-      email: user.email || "",
-      role: user.role as Role || "lgu-admin",
-      displayName: user.displayName || "",
-      location: user.location || "Not specified",
+      ...user,
+      profileImageUrl: user.profileImageId
+        ? await ctx.storage.getUrl(user.profileImageId)
+        : null,
     };
+  },
+});
+
+export const generateProfileImageUploadUrl = mutation({
+  args: {},
+  handler: async (ctx) => ctx.storage.generateUploadUrl(),
+});
+
+export const updateFirebaseProfile = mutation({
+  args: {
+    uid: v.string(),
+    email: v.string(),
+    firstName: v.string(),
+    lastName: v.string(),
+    phone: v.string(),
+    location: v.string(),
+    barangay: v.string(),
+    profileImageId: v.optional(v.id("_storage")),
+  },
+  handler: async (ctx, args) => {
+    const existing = await ctx.db
+      .query("users")
+      .withIndex("by_uid", (q) => q.eq("uid", args.uid))
+      .unique();
+
+    const fullName = `${args.firstName.trim()} ${args.lastName.trim()}`.trim();
+    const profile = {
+      uid: args.uid,
+      email: args.email,
+      firstName: args.firstName.trim(),
+      lastName: args.lastName.trim(),
+      fullName,
+      name: fullName,
+      displayName: fullName,
+      phone: args.phone.trim(),
+      location: args.location.trim(),
+      barangay: args.barangay,
+      profileComplete: true,
+      updatedAt: Date.now(),
+      ...(args.profileImageId ? { profileImageId: args.profileImageId } : {}),
+    };
+
+    if (existing) {
+      const oldImageId = existing.profileImageId;
+      await ctx.db.patch(existing._id, profile);
+      if (args.profileImageId && oldImageId && oldImageId !== args.profileImageId) {
+        await ctx.storage.delete(oldImageId);
+      }
+      return existing._id;
+    }
+
+    return ctx.db.insert("users", {
+      ...profile,
+      role: "lgu-admin",
+      tokenIdentifier: `firebase_${args.uid}`,
+      createdAt: Date.now(),
+    });
   },
 });
 

@@ -118,15 +118,67 @@ export const updateAssignmentStatus = mutation({
     status: v.string(),
   },
   handler: async (ctx, args) => {
+    const now = Date.now();
     await ctx.db.patch(args.assignmentId, { status: args.status });
 
-    // Create notification for status change
+    const isCompleted = args.status.toLowerCase() === "completed" || args.status.toLowerCase() === "resolved";
+
     const assignment = await ctx.db.get(args.assignmentId);
     if (assignment) {
       const report = await ctx.db.get(assignment.reportId);
       const team = await ctx.db.get(assignment.teamId);
-      if (report && team) {
-        // Notify report owner
+
+      if (report && isCompleted) {
+        // Find and resolve all co-located reports at this area
+        const allReports = await ctx.db.query("reports").collect();
+        const coLocatedReports = allReports.filter((r) => {
+          if (r._id === report._id) return true;
+          if (r.status?.toLowerCase() === "resolved" || r.status?.toLowerCase() === "completed") return false;
+
+          const sameCoords =
+            typeof r.lat === "number" &&
+            typeof report.lat === "number" &&
+            Math.abs(r.lat - report.lat) < 0.0005 &&
+            Math.abs(r.lng - report.lng) < 0.0005;
+
+          const sameLocation =
+            r.locationName &&
+            report.locationName &&
+            r.locationName.trim().toLowerCase() === report.locationName.trim().toLowerCase();
+
+          return sameCoords || sameLocation;
+        });
+
+        for (const r of coLocatedReports) {
+          await ctx.db.patch(r._id, {
+            status: "Resolved",
+            resolvedBy: team?.name || "Tanod Team",
+            resolvedAt: now,
+          });
+
+          // Mark other assignments for this co-located report as completed
+          const otherAssignments = await ctx.db
+            .query("assignments")
+            .withIndex("by_reportId", (q) => q.eq("reportId", r._id))
+            .collect();
+
+          for (const a of otherAssignments) {
+            await ctx.db.patch(a._id, { status: "Completed" });
+          }
+
+          if (r.userId) {
+            await ctx.db.insert("notifications", {
+              userId: r.userId,
+              type: "resolved",
+              title: "Report Resolved",
+              message: `Your report at ${r.locationName} has been resolved by ${team?.name || "Tanod team"}.`,
+              reportId: r._id as string,
+              read: false,
+              createdAt: now,
+            });
+          }
+        }
+      } else if (report && team) {
         if (report.userId) {
           await ctx.db.insert("notifications", {
             userId: report.userId,
@@ -135,7 +187,7 @@ export const updateAssignmentStatus = mutation({
             message: `Your report at ${report.locationName} has been marked as ${args.status} by ${team.name}.`,
             reportId: assignment.reportId as string,
             read: false,
-            createdAt: Date.now(),
+            createdAt: now,
           });
         }
       }
@@ -208,35 +260,64 @@ export const resolveAssignment = mutation({
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
+    const resolverId = identity?.subject || "tanod-unit";
 
     const assignment = await ctx.db.get(args.assignmentId);
     if (!assignment) throw new Error("Assignment not found");
 
-    // Update assignment status
+    const now = Date.now();
     await ctx.db.patch(args.assignmentId, { status: "Completed" });
 
-    // Update report with resolution data
     const report = await ctx.db.get(assignment.reportId);
     if (report) {
-      await ctx.db.patch(assignment.reportId, {
-        status: "Resolved",
-        resolutionImage: args.resolutionImage,
-        resolvedBy: identity.subject,
-        resolvedAt: Date.now(),
+      // Find all co-located reports and resolve them
+      const allReports = await ctx.db.query("reports").collect();
+      const coLocatedReports = allReports.filter((r) => {
+        if (r._id === report._id) return true;
+        if (r.status?.toLowerCase() === "resolved" || r.status?.toLowerCase() === "completed") return false;
+
+        const sameCoords =
+          typeof r.lat === "number" &&
+          typeof report.lat === "number" &&
+          Math.abs(r.lat - report.lat) < 0.0005 &&
+          Math.abs(r.lng - report.lng) < 0.0005;
+
+        const sameLocation =
+          r.locationName &&
+          report.locationName &&
+          r.locationName.trim().toLowerCase() === report.locationName.trim().toLowerCase();
+
+        return sameCoords || sameLocation;
       });
 
-      // Notify report owner
-      if (report.userId) {
-        await ctx.db.insert("notifications", {
-          userId: report.userId,
-          type: "resolved",
-          title: "Report Resolved",
-          message: `Your report at ${report.locationName} has been resolved.`,
-          reportId: assignment.reportId as string,
-          read: false,
-          createdAt: Date.now(),
+      for (const r of coLocatedReports) {
+        await ctx.db.patch(r._id, {
+          status: "Resolved",
+          resolutionImage: args.resolutionImage,
+          resolvedBy: resolverId,
+          resolvedAt: now,
         });
+
+        const relatedAssignments = await ctx.db
+          .query("assignments")
+          .withIndex("by_reportId", (q) => q.eq("reportId", r._id))
+          .collect();
+
+        for (const a of relatedAssignments) {
+          await ctx.db.patch(a._id, { status: "Completed" });
+        }
+
+        if (r.userId) {
+          await ctx.db.insert("notifications", {
+            userId: r.userId,
+            type: "resolved",
+            title: "Report Resolved",
+            message: `Your report at ${r.locationName} has been resolved by field patrol.`,
+            reportId: r._id as string,
+            read: false,
+            createdAt: now,
+          });
+        }
       }
     }
 

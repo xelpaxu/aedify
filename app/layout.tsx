@@ -24,7 +24,14 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" className={inter.variable}>
+    <html lang="en" className={inter.variable} suppressHydrationWarning data-scroll-behavior="smooth">
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem('aedify-theme');if(t==='dark')document.documentElement.classList.add('dark');document.documentElement.style.colorScheme=t==='dark'?'dark':'light'}catch(e){}})()`,
+          }}
+        />
+      </head>
       <body className="antialiased">
         <ClientProviders>
           {children}

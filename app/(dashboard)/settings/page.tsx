@@ -1,11 +1,14 @@
 'use client'
 
 import { useState } from "react"
-import { Save, AlertCircle, Wifi, Map as MapIcon, RefreshCw, SlidersHorizontal, Globe } from "lucide-react"
-import { useLanguage, Language } from '../../../src/lib/translations'
+import { Save, AlertCircle, Wifi, Map as MapIcon, RefreshCw, SlidersHorizontal, Globe, Moon } from "lucide-react"
+import { useLanguage } from '../../../src/lib/translations'
+import { ThemeToggle } from '../../../src/components/ThemeToggle'
+import { useTheme } from '../../../src/lib/theme'
 
 export default function SettingsPage() {
   const { t, language, setLanguage } = useLanguage()
+  const { theme } = useTheme()
   const [w1, setW1] = useState(0.4)
   const [w2, setW2] = useState(0.8)
   const [w3, setW3] = useState(0.6)
@@ -165,6 +168,24 @@ export default function SettingsPage() {
               >
                 {t('tagalog')}
               </button>
+            </div>
+          </div>
+
+          {/* Appearance Settings */}
+          <div className="bg-white p-5 rounded-2xl border border-slate-200/60">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-primary-50 text-primary-600 rounded-xl">
+                  <Moon size={16} />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-800">Dark theme</h3>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    {theme === 'dark' ? 'Dark appearance is on' : 'Use a darker appearance across Aedify'}
+                  </p>
+                </div>
+              </div>
+              <ThemeToggle variant="settings" />
             </div>
           </div>
         </div>

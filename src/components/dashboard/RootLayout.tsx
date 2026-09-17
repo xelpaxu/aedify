@@ -2,18 +2,23 @@
 
 import { ReactNode, useState } from 'react'
 import { Sidebar } from './Sidebar'
-import { Bell, Search, ChevronDown, LogOut, Settings, User, Menu, Sparkles } from 'lucide-react'
+import { Search, ChevronDown, LogOut, Settings, User, Menu } from 'lucide-react'
 import { useAuth } from '../../lib/auth'
 import { useLanguage } from '../../lib/translations'
 import Image from 'next/image'
 import Link from 'next/link'
+import { ThemeToggle } from '../ThemeToggle'
+import { useQuery } from 'convex/react'
+import { api } from '../../../convex/_generated/api'
+import { NotificationCenter } from './NotificationCenter'
 
 interface RootLayoutProps {
   children: ReactNode
 }
 
 export function RootLayout({ children }: RootLayoutProps) {
-  const { user, logout } = useAuth()
+  const { user, firebaseUser, logout } = useAuth()
+  const profile = useQuery(api.users.getUserByUid, firebaseUser ? { uid: firebaseUser.uid } : 'skip')
   const { t } = useLanguage()
   const [showProfile, setShowProfile] = useState(false)
   const [showMobileMenu, setShowMobileMenu] = useState(false)
@@ -51,7 +56,7 @@ export function RootLayout({ children }: RootLayoutProps) {
       <Sidebar />
       
       <main className="flex-1 flex flex-col relative overflow-hidden bg-[#f8fafc]">
-        {/* Header - Improved with more padding and better design */}
+        {/* Header */}
         <header className="h-[72px] shrink-0 px-6 md:px-8 flex items-center justify-between bg-white/80 backdrop-blur-sm border-b border-slate-200/60 z-10">
           {/* Left section */}
           <div className="flex items-center gap-4">
@@ -79,7 +84,7 @@ export function RootLayout({ children }: RootLayoutProps) {
             </div>
           </div>
 
-          {/* Right section - Improved spacing */}
+          {/* Right section */}
           <div className="flex items-center gap-3 md:gap-4">
             {/* Search - hidden on mobile */}
             <button className="hidden md:flex items-center gap-2.5 px-4 py-2 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-xl transition-all text-sm font-medium border border-slate-200/80 bg-white/50">
@@ -93,19 +98,15 @@ export function RootLayout({ children }: RootLayoutProps) {
               <Search size={18} strokeWidth={1.8} />
             </button>
 
-            {/* Notifications with badge */}
-            <button className="relative p-2.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-all">
-              <Bell size={18} strokeWidth={1.8} />
-              <span className="absolute top-2 right-2 flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary-400 opacity-75" />
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-primary-500 ring-2 ring-white" />
-              </span>
-            </button>
+            {/* Real-time Notification Center & Watcher */}
+            <NotificationCenter />
+
+            <ThemeToggle />
 
             {/* Divider */}
             <div className="hidden sm:block w-px h-8 bg-slate-200/60" />
 
-            {/* Profile dropdown - Improved */}
+            {/* Profile dropdown */}
             <div className="relative">
               <button
                 onClick={() => setShowProfile(!showProfile)}
@@ -113,16 +114,17 @@ export function RootLayout({ children }: RootLayoutProps) {
               >
                 <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary-500/20 to-primary-600/10 flex items-center justify-center overflow-hidden ring-2 ring-slate-200/50 group-hover:ring-primary-200/50 transition-all">
                   <Image
-                    src="/assets/logo/aedify.png"
+                    src={profile?.profileImageUrl || '/assets/logo/aedify.png'}
                     alt="profile"
                     width={36}
                     height={36}
                     className="w-full h-full object-cover"
+                    unoptimized
                   />
                 </div>
                 <div className="text-left hidden sm:block">
                   <p className="text-sm font-semibold text-slate-800 leading-none group-hover:text-primary-600 transition-colors">
-                    {getProfileTitle()}
+                    {profile?.displayName || getProfileTitle()}
                   </p>
                   <p className="text-[10px] font-medium text-slate-400 mt-0.5">
                     {getProfileDesc()}
@@ -136,7 +138,7 @@ export function RootLayout({ children }: RootLayoutProps) {
                 />
               </button>
 
-              {/* Dropdown menu - Improved */}
+              {/* Dropdown menu */}
               {showProfile && (
                 <>
                   <div className="fixed inset-0 z-40" onClick={() => setShowProfile(false)} />
@@ -146,15 +148,16 @@ export function RootLayout({ children }: RootLayoutProps) {
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500/20 to-primary-600/10 flex items-center justify-center">
                           <Image
-                            src="/assets/logo/aedify.png"
+                            src={profile?.profileImageUrl || '/assets/logo/aedify.png'}
                             alt="profile"
                             width={40}
                             height={40}
                             className="w-full h-full object-cover rounded-xl"
+                            unoptimized
                           />
                         </div>
                         <div>
-                          <p className="text-sm font-bold text-slate-900">{getProfileTitle()}</p>
+                          <p className="text-sm font-bold text-slate-900">{profile?.displayName || getProfileTitle()}</p>
                           <p className="text-xs text-slate-400 mt-0.5">{user?.email || 'user@aedify.com'}</p>
                         </div>
                       </div>

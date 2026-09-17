@@ -16,12 +16,6 @@ export const getAllReports = query({
   args: {},
   handler: async (ctx) => {
     const reports = await ctx.db.query("reports").collect();
-    // ✅ Log the size of image data to debug
-    reports.forEach(r => {
-      if (r.imageUri) {
-        console.log(`Report ${r._id} image size: ${r.imageUri.length} characters`);
-      }
-    });
     return reports;
   },
 });
@@ -61,8 +55,57 @@ export const verifyReport = mutation({
   handler: async (ctx, { id }) => {
     const existing = await ctx.db.get(id);
     if (!existing) throw new Error("Report not found");
-    
+
     await ctx.db.patch(id, { verified: true, status: "verified" });
+    return { success: true };
+  },
+});
+
+// Human validation replaces the AI assessment shown on the report.
+export const modifyReport = mutation({
+  args: {
+    id: v.id("reports"),
+    locationName: v.string(),
+    description: v.string(),
+    lat: v.number(),
+    lng: v.number(),
+    adminNotes: v.string(),
+    analysisIssue: v.union(
+      v.literal("wrong-class"), v.literal("wrong-detection"),
+      v.literal("missed-detection"), v.literal("partially-correct"),
+      v.literal("wrong-risk"), v.literal("details-only"),
+    ),
+    correctedClassification: v.string(),
+    correctedFindings: v.string(),
+    reviewedBy: v.string(),
+  },
+  handler: async (ctx, { id, ...fields }) => {
+    const existing = await ctx.db.get(id);
+    if (!existing) throw new Error("Report not found");
+    if (existing.status.toLowerCase() === "resolved") {
+      throw new Error("Resolved reports cannot be modified for dispatch.");
+    }
+    if (!fields.adminNotes.trim() || !fields.locationName.trim()) {
+      throw new Error("Location and admin validation notes are required.");
+    }
+    if (!fields.correctedClassification.trim() || !fields.correctedFindings.trim()) {
+      throw new Error("Enter the correct classification and the admin-confirmed findings.");
+    }
+    if (!Number.isFinite(fields.lat) || Math.abs(fields.lat) > 90 ||
+      !Number.isFinite(fields.lng) || Math.abs(fields.lng) > 180) {
+      throw new Error("Enter valid latitude and longitude coordinates.");
+    }
+    await ctx.db.patch(id, {
+      ...fields,
+      locationName: fields.locationName.trim(),
+      adminNotes: fields.adminNotes.trim(),
+      correctedClassification: fields.correctedClassification.trim(),
+      correctedFindings: fields.correctedFindings.trim(),
+      reviewType: "admin-modified",
+      reviewedAt: Date.now(),
+      verified: true,
+      status: "verified",
+    });
     return { success: true };
   },
 });
@@ -126,6 +169,19 @@ export const createReport = mutation({
       accuracy: args.accuracy || "",
       public: args.public || false,
     });
+
+    // Create system broadcast notification for incoming report
+    const isCritical = args.status?.toLowerCase() === "critical";
+    await ctx.db.insert("notifications", {
+      userId: "all",
+      type: isCritical ? "critical_report" : "new_report",
+      title: isCritical ? "Critical Vector Hazard Reported" : "New Vector Hazard Reported",
+      message: `New incident reported at ${args.locationName} (${args.detections?.[0] || 'Breeding Site'}).`,
+      reportId: id as string,
+      read: false,
+      createdAt: Date.now(),
+    });
+
     return id;
   },
 });
@@ -203,7 +259,7 @@ export const getAssignedReports = query({
   },
 });
 
-// Tanod resolve report
+// Tanod/Admin resolve report with linked area resolution for all co-located incidents
 export const resolveReport = mutation({
   args: {
     reportId: v.id("reports"),
@@ -212,50 +268,131 @@ export const resolveReport = mutation({
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerkUserId", (q) => q.eq("clerkUserId", identity.subject))
-      .unique();
-
-    if (user?.role !== "tanod" && user?.role !== "admin") {
-      throw new Error("Only Tanod or Admin can resolve reports");
-    }
+    const resolverName = identity?.name || identity?.nickname || "Tanod Officer";
 
     const report = await ctx.db.get(args.reportId);
     if (!report) throw new Error("Report not found");
 
-    await ctx.db.patch(args.reportId, {
-      status: "Resolved",
-      resolutionImage: args.resolutionImage || "",
-      resolvedBy: user.name || user.firstName || identity.name || identity.subject,
-      resolvedAt: Date.now(),
+    const now = Date.now();
+
+    // 1. Find all co-located unresolved reports in the same area / coordinates
+    const allReports = await ctx.db.query("reports").collect();
+    const coLocatedReports = allReports.filter((r) => {
+      if (r._id === report._id) return true;
+      if (r.status?.toLowerCase() === "resolved" || r.status?.toLowerCase() === "completed") return false;
+
+      const sameCoords =
+        typeof r.lat === "number" &&
+        typeof report.lat === "number" &&
+        Math.abs(r.lat - report.lat) < 0.0005 &&
+        Math.abs(r.lng - report.lng) < 0.0005;
+
+      const sameLocation =
+        r.locationName &&
+        report.locationName &&
+        r.locationName.trim().toLowerCase() === report.locationName.trim().toLowerCase();
+
+      return sameCoords || sameLocation;
     });
 
-    // Also update any assignment for this report
-    const assignments = await ctx.db
-      .query("assignments")
-      .withIndex("by_reportId", (q) => q.eq("reportId", args.reportId))
-      .collect();
-
-    for (const a of assignments) {
-      await ctx.db.patch(a._id, { status: "Completed" });
-    }
-
-    // Notify report owner
-    if (report.userId) {
-      await ctx.db.insert("notifications", {
-        userId: report.userId,
-        type: "resolved",
-        title: "Report Resolved",
-        message: `Your report at ${report.locationName} has been resolved by Tanod team.`,
-        reportId: args.reportId as string,
-        read: false,
-        createdAt: Date.now(),
+    // 2. Resolve all co-located reports and complete their assignments
+    for (const r of coLocatedReports) {
+      await ctx.db.patch(r._id, {
+        status: "Resolved",
+        resolutionImage: args.resolutionImage || "",
+        resolvedBy: resolverName,
+        resolvedAt: now,
       });
+
+      // Update any active assignments for this report
+      const assignments = await ctx.db
+        .query("assignments")
+        .withIndex("by_reportId", (q) => q.eq("reportId", r._id))
+        .collect();
+
+      for (const a of assignments) {
+        await ctx.db.patch(a._id, { status: "Completed" });
+      }
+
+      // Notify report owner
+      if (r.userId) {
+        await ctx.db.insert("notifications", {
+          userId: r.userId,
+          type: "resolved",
+          title: "Report Resolved",
+          message: `Your vector hazard report at ${r.locationName} has been cleared and resolved.`,
+          reportId: r._id as string,
+          read: false,
+          createdAt: now,
+        });
+      }
     }
 
-    return { success: true };
+    return { success: true, resolvedCount: coLocatedReports.length };
+  },
+});
+
+// Resolve all reports in a geographic location / cluster
+export const resolveAreaReports = mutation({
+  args: {
+    lat: v.number(),
+    lng: v.number(),
+    locationName: v.optional(v.string()),
+    resolutionImage: v.optional(v.string()),
+    resolutionNotes: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    const resolverName = identity?.name || identity?.nickname || "Tanod Patrol Team";
+    const now = Date.now();
+
+    const allReports = await ctx.db.query("reports").collect();
+    const matchingReports = allReports.filter((r) => {
+      if (r.status?.toLowerCase() === "resolved" || r.status?.toLowerCase() === "completed") return false;
+
+      const sameCoords =
+        typeof r.lat === "number" &&
+        Math.abs(r.lat - args.lat) < 0.0005 &&
+        Math.abs(r.lng - args.lng) < 0.0005;
+
+      const sameLocation =
+        args.locationName &&
+        r.locationName &&
+        r.locationName.trim().toLowerCase() === args.locationName.trim().toLowerCase();
+
+      return sameCoords || sameLocation;
+    });
+
+    for (const r of matchingReports) {
+      await ctx.db.patch(r._id, {
+        status: "Resolved",
+        resolutionImage: args.resolutionImage || "",
+        resolvedBy: resolverName,
+        resolvedAt: now,
+      });
+
+      const assignments = await ctx.db
+        .query("assignments")
+        .withIndex("by_reportId", (q) => q.eq("reportId", r._id))
+        .collect();
+
+      for (const a of assignments) {
+        await ctx.db.patch(a._id, { status: "Completed" });
+      }
+
+      if (r.userId) {
+        await ctx.db.insert("notifications", {
+          userId: r.userId,
+          type: "resolved",
+          title: "Area Resolved",
+          message: `Breeding site hazard at ${r.locationName} has been mitigated and resolved.`,
+          reportId: r._id as string,
+          read: false,
+          createdAt: now,
+        });
+      }
+    }
+
+    return { success: true, resolvedCount: matchingReports.length };
   },
 });

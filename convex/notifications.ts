@@ -5,15 +5,21 @@ export const getMyNotifications = query({
   args: {},
   handler: async (ctx) => {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return [];
+    const all = await ctx.db.query("notifications").order("desc").take(50);
+    if (!identity) {
+      return all;
+    }
 
-    const notifications = await ctx.db
-      .query("notifications")
-      .withIndex("by_userId", (q) => q.eq("userId", identity.subject))
-      .order("desc")
-      .collect();
+    return all.filter(
+      (n) => n.userId === identity.subject || n.userId === "all" || !n.userId
+    );
+  },
+});
 
-    return notifications;
+export const getAllNotifications = query({
+  args: {},
+  handler: async (ctx) => {
+    return await ctx.db.query("notifications").order("desc").take(50);
   },
 });
 
@@ -21,16 +27,12 @@ export const getUnreadCount = query({
   args: {},
   handler: async (ctx) => {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return 0;
+    const all = await ctx.db.query("notifications").order("desc").take(50);
+    const userNotifs = identity
+      ? all.filter((n) => n.userId === identity.subject || n.userId === "all" || !n.userId)
+      : all;
 
-    const unread = await ctx.db
-      .query("notifications")
-      .withIndex("by_userId_read", (q) =>
-        q.eq("userId", identity.subject).eq("read", false)
-      )
-      .collect();
-
-    return unread.length;
+    return userNotifs.filter((n) => !n.read).length;
   },
 });
 
@@ -44,18 +46,11 @@ export const markAsRead = mutation({
 export const markAllAsRead = mutation({
   args: {},
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
-
-    const unread = await ctx.db
-      .query("notifications")
-      .withIndex("by_userId_read", (q) =>
-        q.eq("userId", identity.subject).eq("read", false)
-      )
-      .collect();
-
-    for (const notif of unread) {
-      await ctx.db.patch(notif._id, { read: true });
+    const all = await ctx.db.query("notifications").collect();
+    for (const notif of all) {
+      if (!notif.read) {
+        await ctx.db.patch(notif._id, { read: true });
+      }
     }
   },
 });
@@ -69,7 +64,7 @@ export const createNotification = mutation({
     reportId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await ctx.db.insert("notifications", {
+    return await ctx.db.insert("notifications", {
       userId: args.userId,
       type: args.type,
       title: args.title,

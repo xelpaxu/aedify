@@ -44,8 +44,12 @@ import {
   Users
 } from 'lucide-react'
 import Link from 'next/link'
-import { useState, useEffect, useMemo } from 'react'
+import { createPortal } from 'react-dom'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import dynamic from 'next/dynamic'
+import { useAuth } from '@/src/lib/auth'
+import { analysisIssueOptions, getAnalysisIssueLabel, type AnalysisIssue } from '@/src/lib/reportReview'
+import { normalizeReportImage } from '@/src/lib/reportImages'
 import L from 'leaflet'
 import { getLocationHierarchy, formatReportLocation, useReverseGeocode } from '../../../../src/lib/geoUtils'
 import { mockReports } from '../../../../src/lib/mockData'
@@ -136,29 +140,31 @@ function DetailSkeleton() {
   )
 }
 
-// Edit Modal Component
-function EditReportModal({
+// Admin modification dialog
+function ModifyReportModal({
   isOpen,
   onClose,
   report,
   onSave,
-  isSaving
+  isSaving,
+  error
 }: {
   isOpen: boolean
   onClose: () => void
   report: any
   onSave: (data: any) => void
   isSaving: boolean
+  error: string
 }) {
   const [formData, setFormData] = useState({
     locationName: '',
     description: '',
-    status: '',
-    accuracy: 0,
-    reasoning: '',
+    adminNotes: '',
+    analysisIssue: '' as AnalysisIssue | '',
+    correctedClassification: '',
+    correctedFindings: '',
     lat: 0,
-    lng: 0,
-    userName: ''
+    lng: 0
   })
 
   useEffect(() => {
@@ -167,21 +173,34 @@ function EditReportModal({
       setFormData({
         locationName: loc.formatted,
         description: report.description || '',
-        status: report.status || 'pending',
-        accuracy: typeof report.accuracy === 'number' ? report.accuracy : 85,
-        reasoning: report.reasoning || '',
-        lat: report.lat || 10.68498,
-        lng: report.lng || 122.53764,
-        userName: report.userName || ''
+        adminNotes: report.adminNotes || '',
+        analysisIssue: report.analysisIssue || '',
+        correctedClassification: report.correctedClassification || '',
+        correctedFindings: report.correctedFindings || '',
+        lat: report.lat ?? 10.68498,
+        lng: report.lng ?? 122.53764
       })
     }
-  }, [report])
+  }, [report, isOpen])
+
+  const dialogRef = useRef<HTMLDialogElement>(null)
+  useEffect(() => {
+    const dialog = dialogRef.current
+    if (!isOpen || !dialog) return
+    const previousOverflow = document.body.style.overflow
+    dialog.showModal()
+    document.body.style.overflow = 'hidden'
+    return () => {
+      dialog.close()
+      document.body.style.overflow = previousOverflow
+    }
+  }, [isOpen])
 
   if (!isOpen) return null
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    onSave(formData)
+    if (!isSaving) onSave(formData)
   }
 
   const handleAutoDetect = () => {
@@ -193,7 +212,7 @@ function EditReportModal({
   }
 
   return (
-    <div className="fixed inset-0 z-[200] bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+    <dialog ref={dialogRef} aria-labelledby="modify-report-title" onCancel={(event) => { event.preventDefault(); if (!isSaving) onClose() }} className="fixed inset-0 m-auto max-h-[95dvh] w-[calc(100%-2rem)] max-w-2xl border-0 bg-transparent p-0 backdrop:bg-slate-950/60">
       <div
         className="bg-white rounded-3xl w-full max-w-2xl max-h-[90vh] overflow-hidden shadow-2xl border border-slate-200"
         onClick={(e) => e.stopPropagation()}
@@ -205,12 +224,14 @@ function EditReportModal({
               <Pencil className="h-5 w-5" />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-slate-900">Edit Vector Report</h2>
-              <p className="text-xs text-slate-500">Update coordinates and verified location data</p>
+              <h2 id="modify-report-title" className="text-xl font-bold text-slate-900">Modify and Validate Report</h2>
+              <p className="text-xs text-slate-500">Confirm corrected details and record your assessment before tanod dispatch.</p>
             </div>
           </div>
           <button
             onClick={onClose}
+            disabled={isSaving}
+            aria-label="Close modification dialog"
             className="p-2 hover:bg-slate-100 rounded-xl transition-colors text-slate-400 hover:text-slate-600"
           >
             <X className="h-5 w-5" />
@@ -219,24 +240,9 @@ function EditReportModal({
 
         {/* Modal Body */}
         <div className="p-6 overflow-y-auto max-h-[calc(90vh-180px)]">
-          <form onSubmit={handleSubmit} className="space-y-5">
-            {/* Auto Resolve Banner */}
-            <div className="flex items-center justify-between p-4 bg-primary-50/70 rounded-2xl border border-primary-200/60">
-              <div className="flex items-center gap-3">
-                <Sparkles className="h-5 w-5 text-primary-600 flex-shrink-0" />
-                <div>
-                  <p className="text-xs font-bold text-primary-900">GPS Barangay Resolver</p>
-                  <p className="text-[11px] text-primary-700">Auto-detects Barangay, District, and City from GPS.</p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={handleAutoDetect}
-                className="px-3.5 py-1.5 bg-white border border-primary-300 rounded-xl text-primary-800 text-xs font-bold hover:bg-primary-50 transition-colors shadow-sm"
-              >
-                Auto-Format
-              </button>
-            </div>
+          {error && <p role="alert" className="mb-4 text-sm text-rose-700">{error}</p>}
+          <p className="mb-4 text-sm text-slate-600">Confirming validates this report for tanod response. Your notes replace AI results on this report.</p>
+          <form id="modify-report-form" onSubmit={handleSubmit} className="space-y-5">
 
             <div className="space-y-4">
               {/* Formatted Location Name */}
@@ -284,37 +290,6 @@ function EditReportModal({
                 </div>
               </div>
 
-              {/* Status & Accuracy */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wider">
-                    Status
-                  </label>
-                  <select
-                    value={formData.status}
-                    onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none transition cursor-pointer"
-                  >
-                    <option value="pending">⏳ Pending</option>
-                    <option value="verified">✅ Verified</option>
-                    <option value="critical">🔴 Critical</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wider">
-                    Confidence (%)
-                  </label>
-                  <input
-                    type="number"
-                    value={formData.accuracy}
-                    onChange={(e) => setFormData({ ...formData, accuracy: Number(e.target.value) })}
-                    min="0"
-                    max="100"
-                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-900 focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none transition"
-                  />
-                </div>
-              </div>
-
               {/* Description */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wider">
@@ -329,15 +304,61 @@ function EditReportModal({
                 />
               </div>
 
-              {/* AI Reasoning */}
+              <fieldset className="space-y-4 rounded-2xl border border-amber-200 bg-amber-50/50 p-4">
+                <legend className="px-1 text-sm font-bold text-slate-900">
+                  <span className="inline-flex items-center gap-2"><AlertTriangle className="h-4 w-4 text-amber-600" />AI Analysis Review</span>
+                </legend>
+                <div>
+                  <label htmlFor="analysis-issue" className="mb-1.5 block text-xs font-bold text-slate-700">What needs correcting?</label>
+                  <select
+                    id="analysis-issue"
+                    required
+                    value={formData.analysisIssue}
+                    onChange={e => setFormData({ ...formData, analysisIssue: e.target.value as AnalysisIssue })}
+                    className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900"
+                  >
+                    <option value="" disabled>Select your assessment</option>
+                    {analysisIssueOptions.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label htmlFor="corrected-classification" className="mb-1.5 block text-xs font-bold text-slate-700">Correct classification</label>
+                  <input
+                    id="corrected-classification"
+                    required
+                    value={formData.correctedClassification}
+                    onChange={e => setFormData({ ...formData, correctedClassification: e.target.value })}
+                    placeholder="e.g., Water-filled discarded tire"
+                    className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="corrected-findings" className="mb-1.5 block text-xs font-bold text-slate-700">Correct detection / confirmed findings</label>
+                  <textarea
+                    id="corrected-findings"
+                    required
+                    rows={3}
+                    value={formData.correctedFindings}
+                    onChange={e => setFormData({ ...formData, correctedFindings: e.target.value })}
+                    placeholder="Describe what is actually present, any missed objects, and the correct condition or risk."
+                    aria-describedby="corrected-findings-help"
+                    className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900"
+                  />
+                  <p id="corrected-findings-help" className="mt-1.5 text-xs text-slate-600">Enter your confirmed assessment. These findings will be shown as the admin's correction on the report.</p>
+                </div>
+              </fieldset>
+
+              {/* Admin assessment */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wider">
-                  AI Vector Analysis Reasoning
+                  Admin Validation Notes
                 </label>
                 <textarea
-                  value={formData.reasoning}
-                  onChange={(e) => setFormData({ ...formData, reasoning: e.target.value })}
-                  rows={2}
+                  value={formData.adminNotes}
+                  onChange={(e) => setFormData({ ...formData, adminNotes: e.target.value })}
+                  required
+                  placeholder="Explain the corrections, your findings, and what the tanods need to resolve."
+                  rows={4}
                   className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none transition resize-none"
                 />
               </div>
@@ -350,13 +371,15 @@ function EditReportModal({
           <button
             type="button"
             onClick={onClose}
+            disabled={isSaving}
+            aria-label="Close modification dialog"
             className="px-5 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-700 font-bold text-sm hover:bg-slate-50 transition"
           >
             Cancel
           </button>
           <button
-            type="button"
-            onClick={handleSubmit}
+            type="submit"
+            form="modify-report-form"
             disabled={isSaving}
             className="flex items-center gap-2 px-6 py-2.5 bg-primary-600 hover:bg-primary-700 text-white rounded-xl font-bold text-sm shadow-md transition disabled:opacity-60"
           >
@@ -368,24 +391,24 @@ function EditReportModal({
             ) : (
               <>
                 <Save className="h-4 w-4" />
-                Save Changes
+                Confirm Modification
               </>
             )}
           </button>
         </div>
       </div>
-    </div>
+    </dialog>
   )
 }
 
 export default function ReportDetailPage() {
   const params = useParams()
   const router = useRouter()
+  const { user } = useAuth()
   const reportId = params.id as string
 
-  const convexReport = useQuery(api.reports.getReport, {
-    id: (reportId && !reportId.startsWith('#INC')) ? (reportId as Id<"reports">) : ("" as Id<"reports">)
-  })
+  const isMock = reportId.replace(/^#/, "").startsWith("INC")
+  const convexReport = useQuery(api.reports.getReport, isMock ? "skip" : { id: reportId as Id<"reports"> })
 
   // Find in mock data if not in convex
   const mockFallback = useMemo(() => {
@@ -414,7 +437,7 @@ export default function ReportDetailPage() {
   const report: any = convexReport || mockFallback
 
   const verify = useMutation(api.reports.verifyReport)
-  const updateReport = useMutation(api.reports.updateReport)
+  const updateReport = useMutation(api.reports.modifyReport)
 
   const [viewMode, setViewMode] = useState<'annotated' | 'raw'>('annotated')
   const [isPreviewOpen, setIsPreviewOpen] = useState(false)
@@ -422,6 +445,7 @@ export default function ReportDetailPage() {
   const [isExpanded, setIsExpanded] = useState(false)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const [actionError, setActionError] = useState('')
   const [showSuccess, setShowSuccess] = useState(false)
   const [copiedCoords, setCopiedCoords] = useState(false)
 
@@ -461,7 +485,7 @@ export default function ReportDetailPage() {
           bg: 'bg-emerald-50',
           text: 'text-emerald-700',
           border: 'border-emerald-200',
-          label: 'Verified Safe / Controlled',
+          label: 'Verified for Response',
           icon: CheckCircle
         }
       default:
@@ -481,22 +505,22 @@ export default function ReportDetailPage() {
     const targetString = mode === 'annotated' && reportObj.processedImage
       ? reportObj.processedImage
       : reportObj.imageUri
-    if (!targetString) return ''
-    if (targetString.startsWith('http') || targetString.startsWith('data:') || targetString.startsWith('/')) return targetString
-    return `data:image/jpeg;base64,${targetString}`
+    return normalizeReportImage(targetString) || ''
   }
 
   const handleVerify = async () => {
     if (!report) return
+    setActionError('')
     setIsVerifying(true)
     try {
-      if (!reportId.startsWith('#INC')) {
+      if (isMock) throw new Error("Demo reports cannot be saved. Open a submitted report to continue.")
+      {
         await verify({ id: report._id as Id<"reports"> })
       }
       setShowSuccess(true)
       setTimeout(() => setShowSuccess(false), 3000)
     } catch (error) {
-      console.error('Verification failed:', error)
+      setActionError(error instanceof Error ? error.message : 'Unable to verify report.')
     } finally {
       setIsVerifying(false)
     }
@@ -504,19 +528,22 @@ export default function ReportDetailPage() {
 
   const handleSaveEdit = async (formData: any) => {
     if (!report) return
+    setActionError('')
     setIsSaving(true)
     try {
-      if (!reportId.startsWith('#INC')) {
+      if (isMock) throw new Error("Demo reports cannot be saved. Open a submitted report to continue.")
+      {
         await updateReport({
           id: report._id as Id<"reports">,
-          ...formData
+          ...formData,
+          reviewedBy: user?.displayName || user?.email || "Administrator"
         })
       }
       setShowSuccess(true)
       setIsEditModalOpen(false)
       setTimeout(() => setShowSuccess(false), 3000)
     } catch (error) {
-      console.error('Update failed:', error)
+      setActionError(error instanceof Error ? error.message : 'Unable to save modification.')
     } finally {
       setIsSaving(false)
     }
@@ -552,7 +579,8 @@ export default function ReportDetailPage() {
 
   const status = getStatusBadge(report.status)
   const StatusIcon = status.icon
-  const imageUrl = getDisplayImage(report, viewMode)
+  const isModified = report.reviewType === 'admin-modified'
+  const imageUrl = getDisplayImage(report, isModified ? 'raw' : viewMode)
   const confidenceScore = typeof report.accuracy === 'number'
     ? Math.round(report.accuracy <= 1 ? report.accuracy * 100 : report.accuracy)
     : 85
@@ -621,7 +649,7 @@ export default function ReportDetailPage() {
             className="flex items-center gap-2 px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold text-xs shadow-md transition-all active:scale-95"
           >
             <Pencil className="h-3.5 w-3.5" />
-            Edit Report
+            Modify Report
           </button>
           <button
             onClick={() => window.print()}
@@ -642,13 +670,13 @@ export default function ReportDetailPage() {
               <ImageIcon className="h-4 w-4 text-primary-600" />
               <span className="text-xs font-bold text-slate-900 uppercase tracking-wider">Field Surveillance Imagery</span>
               <span className="text-[10px] font-semibold text-slate-500 bg-slate-200/70 px-2 py-0.5 rounded-full">
-                {viewMode === 'annotated' ? 'AI Annotated Analysis' : 'Raw Sensor Feed'}
+                {!isModified && viewMode === 'annotated' ? 'AI Annotated Analysis' : 'Original Report Photo'}
               </span>
             </div>
 
             <div className="flex items-center gap-2">
               {/* View Toggle */}
-              <div className="flex bg-slate-200/60 p-0.5 rounded-xl">
+              {!isModified && <div className="flex bg-slate-200/60 p-0.5 rounded-xl">
                 <button
                   onClick={() => setViewMode('annotated')}
                   className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${viewMode === 'annotated'
@@ -669,7 +697,7 @@ export default function ReportDetailPage() {
                   <ImageIcon className="h-3 w-3" />
                   Raw Photo
                 </button>
-              </div>
+              </div>}
 
               {/* Expand Toggle */}
               <button
@@ -709,7 +737,7 @@ export default function ReportDetailPage() {
             <div className="flex items-center gap-4">
               <span className="flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                Confidence: <strong className="text-slate-900">{confidenceScore}%</strong>
+                {isModified ? "Admin validated" : <>Confidence: <strong className="text-slate-900">{confidenceScore}%</strong></>}
               </span>
               <span>•</span>
               <span className="flex items-center gap-1.5">
@@ -726,9 +754,9 @@ export default function ReportDetailPage() {
       )}
 
       {/* Floating Compact Image Modal */}
-      {isPreviewOpen && imageUrl && (
+      {isPreviewOpen && imageUrl && createPortal(
         <div
-          className="fixed inset-0 z-[500] bg-slate-950/40 backdrop-blur-[2px] flex items-center justify-center p-4 animate-in fade-in duration-150"
+          className="fixed inset-0 z-[500] bg-slate-950/60 flex items-center justify-center p-4 animate-in fade-in duration-150"
           onClick={() => setIsPreviewOpen(false)}
         >
           <div
@@ -770,23 +798,25 @@ export default function ReportDetailPage() {
             <div className="flex items-center justify-between px-4 py-2 bg-slate-50 dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 text-[11px] text-slate-600 dark:text-slate-400">
               <span className="inline-flex items-center gap-1 font-bold text-amber-600 dark:text-amber-400">
                 <Zap className="h-3 w-3" />
-                {confidenceScore}% AI Confidence
+                {isModified ? "Admin validated" : `${confidenceScore}% AI Confidence`}
               </span>
               <span className="text-[10px] text-slate-400">
                 Press ESC to close
               </span>
             </div>
           </div>
-        </div>
+        </div>, document.body
       )}
 
-      {/* Edit Modal */}
-      <EditReportModal
+      {actionError && <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">{actionError}</p>}
+      {/* Modification Modal */}
+      <ModifyReportModal
         isOpen={isEditModalOpen}
         onClose={() => setIsEditModalOpen(false)}
         report={report}
         onSave={handleSaveEdit}
         isSaving={isSaving}
+        error={actionError}
       />
 
       {/* 2-Column Grid Details Layout */}
@@ -842,44 +872,71 @@ export default function ReportDetailPage() {
             </div>
           </div>
 
-          {/* AI Analysis & Vector Intelligence */}
-          <div className="bg-gradient-to-br from-slate-900 via-primary-950 to-slate-900 rounded-3xl p-6 text-white shadow-xl space-y-4 border border-primary-800/40 relative overflow-hidden">
-            <div className="absolute right-0 top-0 w-64 h-64 bg-primary-500/10 rounded-full blur-3xl pointer-events-none" />
-
-            <div className="flex items-center justify-between relative z-10">
-              <div className="flex items-center gap-2">
-                <div className="p-2 bg-primary-500/20 rounded-xl text-primary-400 border border-primary-400/30">
-                  <Bot className="h-5 w-5" />
+          {isModified ? (
+            <section className="bg-white rounded-3xl p-6 border border-emerald-200 shadow-sm space-y-3">
+              <h3 className="flex items-center gap-2 font-bold text-emerald-800"><ShieldCheck className="h-5 w-5" />Admin Modification and Validation</h3>
+              <p className="text-sm text-slate-600">Corrected and confirmed by {report.reviewedBy || 'Administrator'}{report.reviewedAt ? ` on ${new Date(report.reviewedAt).toLocaleString()}` : ''}. Ready for tanod response.</p>
+              {report.analysisIssue && (
+                <div className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm font-semibold text-amber-900">
+                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                  <span>Review finding: {getAnalysisIssueLabel(report.analysisIssue)}</span>
                 </div>
-                <div>
-                  <h4 className="font-black text-sm uppercase tracking-wider text-white">AI Vector Diagnostic</h4>
-                  <p className="text-[11px] text-primary-300">Automated computer vision & microclimate correlation</p>
+              )}
+              {(report.correctedClassification || report.correctedFindings) && (
+                <dl className="space-y-3 rounded-xl bg-emerald-50 p-4 text-sm">
+                  <div>
+                    <dt className="flex items-center gap-1.5 font-semibold text-emerald-900"><CheckCircle className="h-4 w-4" />Correct classification</dt>
+                    <dd className="mt-1 whitespace-pre-wrap text-slate-800">{report.correctedClassification}</dd>
+                  </div>
+                  <div>
+                    <dt className="font-semibold text-emerald-900">Admin-confirmed findings</dt>
+                    <dd className="mt-1 whitespace-pre-wrap text-slate-800">{report.correctedFindings}</dd>
+                  </div>
+                </dl>
+              )}
+              <h4 className="text-sm font-semibold text-slate-900">Admin validation notes</h4>
+              <p className="whitespace-pre-wrap text-sm text-slate-800">{report.adminNotes}</p>
+            </section>
+          ) : (
+            <div className="bg-gradient-to-br from-slate-900 via-primary-950 to-slate-900 rounded-3xl p-6 text-white shadow-xl space-y-4 border border-primary-800/40 relative overflow-hidden">
+              <div className="absolute right-0 top-0 w-64 h-64 bg-primary-500/10 rounded-full blur-3xl pointer-events-none" />
+
+              <div className="flex items-center justify-between relative z-10">
+                <div className="flex items-center gap-2">
+                  <div className="p-2 bg-primary-500/20 rounded-xl text-primary-400 border border-primary-400/30">
+                    <Bot className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h4 className="font-black text-sm uppercase tracking-wider text-white">AI Vector Diagnostic</h4>
+                    <p className="text-[11px] text-primary-300">Automated computer vision & microclimate correlation</p>
+                  </div>
+                </div>
+                <span className="px-3 py-1 bg-white/10 rounded-full text-xs font-bold text-emerald-400 border border-white/15">
+                  {confidenceScore}% Accuracy Score
+                </span>
+              </div>
+
+              <div className="p-4 bg-white/5 rounded-2xl border border-white/10 relative z-10">
+                <p className="text-base text-slate-100 font-medium italic leading-relaxed">
+                  &quot;{report.reasoning || 'AI classified stagnant moisture and discarded containers within residential zone.'}&quot;
+                </p>
+              </div>
+
+              {/* Detections & Checklist */}
+              <div className="space-y-2 relative z-10">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Classified Environmental Vectors:</p>
+                <div className="flex flex-wrap gap-2">
+                  {(report.detections || ["Discarded Water Container", "Stagnant Pool", "Mosquito Habitat"]).map((det: string, idx: number) => (
+                    <span key={idx} className="px-3 py-1 bg-white/10 text-white rounded-xl text-xs font-bold border border-white/10 flex items-center gap-1.5">
+                      <Check className="h-3 w-3 text-emerald-400" />
+                      {det}
+                    </span>
+                  ))}
                 </div>
               </div>
-              <span className="px-3 py-1 bg-white/10 rounded-full text-xs font-bold text-emerald-400 border border-white/15">
-                {confidenceScore}% Accuracy Score
-              </span>
             </div>
 
-            <div className="p-4 bg-white/5 rounded-2xl border border-white/10 relative z-10">
-              <p className="text-base text-slate-100 font-medium italic leading-relaxed">
-                &quot;{report.reasoning || 'AI classified stagnant moisture and discarded containers within residential zone.'}&quot;
-              </p>
-            </div>
-
-            {/* Detections & Checklist */}
-            <div className="space-y-2 relative z-10">
-              <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Classified Environmental Vectors:</p>
-              <div className="flex flex-wrap gap-2">
-                {(report.detections || ["Discarded Water Container", "Stagnant Pool", "Mosquito Habitat"]).map((det: string, idx: number) => (
-                  <span key={idx} className="px-3 py-1 bg-white/10 text-white rounded-xl text-xs font-bold border border-white/10 flex items-center gap-1.5">
-                    <Check className="h-3 w-3 text-emerald-400" />
-                    {det}
-                  </span>
-                ))}
-              </div>
-            </div>
-          </div>
+          )}
 
           {/* Description & Narrative */}
           <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-sm space-y-3">
@@ -963,17 +1020,17 @@ export default function ReportDetailPage() {
                 {isVerifying ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    Verifying Telemetry...
+                    Verifying Report...
                   </>
                 ) : report.verified ? (
                   <>
                     <CheckCircle className="h-4 w-4" />
-                    Report Verified
+                    {isModified ? 'Admin Validated' : 'Report Verified'}
                   </>
                 ) : (
                   <>
                     <ShieldCheck className="h-4 w-4" />
-                    Verify Hotspot
+                    Verify Report
                   </>
                 )}
               </button>
@@ -987,13 +1044,13 @@ export default function ReportDetailPage() {
                 Dispatch Tanod Team
               </button>
 
-              {/* Edit Report */}
+              {/* Modify Report */}
               <button
                 onClick={() => setIsEditModalOpen(true)}
                 className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-2xl font-bold text-sm bg-slate-100 hover:bg-slate-200 text-slate-800 transition-colors"
               >
                 <Pencil className="h-4 w-4" />
-                Edit Metadata
+                Modify and Validate
               </button>
             </div>
           </div>
