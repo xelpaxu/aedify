@@ -5,6 +5,7 @@ import { useQuery } from 'convex/react'
 import { api } from '@/convex/_generated/api'
 import Link from 'next/link'
 import { Grid3x3, LayoutList, X, Eye, ArrowRight } from 'lucide-react'
+import { useAuth } from '@/src/lib/auth'
 import { getReportPreview } from '@/src/lib/reportImages'
 import { useLanguage } from '../../../src/lib/translations'
 import { getLocationHierarchy, useReverseGeocode } from '../../../src/lib/geoUtils'
@@ -251,6 +252,11 @@ function ReportListItem({ report, getStatusBadge, t }: { report: Report; getStat
 
 // ----- MAIN PAGE -----
 export default function ReportsPage() {
+  const { user } = useAuth()
+  const isCalumpangAdmin = user?.role === 'brgy-calumpang'
+  const isSouthFundidorAdmin = user?.role === 'brgy-southfundidor'
+  const isLguAdmin = user?.role === 'lgu-admin' || user?.role === 'sys-admin' || !user?.role?.startsWith('brgy-')
+
   const convexReports = useQuery(api.reports.getAllReports) as Report[] | undefined
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
@@ -258,6 +264,12 @@ export default function ReportsPage() {
   const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'status'>('newest')
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
   const { t } = useLanguage()
+
+  const effectiveBarangayScope = isCalumpangAdmin
+    ? 'Calumpang'
+    : isSouthFundidorAdmin
+      ? 'South Fundidor'
+      : barangayFilter
 
   // Prepare unified report list with fallback to mockReports if convex query returns empty
   const reports: Report[] | undefined = useMemo(() => {
@@ -270,13 +282,13 @@ export default function ReportsPage() {
       locationName: m.location,
       userName: 'Tanod Patrol',
       description: `${m.title} - ${m.classification}`,
-      status: m.risk === 'High' ? 'critical' : m.risk === 'Medium' ? 'pending' : 'verified',
+      status: m.risk === 'High' ? 'critical' : m.status === 'CLOSED' ? 'Resolved' : m.risk === 'Medium' ? 'pending' : 'verified',
       accuracy: typeof m.confidence === 'number' ? m.confidence / 100 : 0.85,
       detections: [m.classification],
       reasoning: 'AI vector classification identified breeding hazards within local perimeter.',
       lat: m.coordinates[0],
       lng: m.coordinates[1],
-      verified: m.risk !== 'High',
+      verified: m.status === 'CLOSED' || m.risk !== 'High',
       imageUri: m.rawPhoto,
     }))
   }, [convexReports])
@@ -328,9 +340,10 @@ export default function ReportsPage() {
 
       const matchesStatus = statusFilter === 'all' || report.status?.toLowerCase() === statusFilter
 
-      const matchesBarangay = barangayFilter === 'all' ||
-        loc.barangay.toLowerCase().includes(barangayFilter.toLowerCase()) ||
-        loc.formatted.toLowerCase().includes(barangayFilter.toLowerCase())
+      const matchesBarangay = effectiveBarangayScope === 'all' ||
+        loc.barangay.toLowerCase().includes(effectiveBarangayScope.toLowerCase()) ||
+        loc.formatted.toLowerCase().includes(effectiveBarangayScope.toLowerCase()) ||
+        (report.locationName && report.locationName.toLowerCase().includes(effectiveBarangayScope.toLowerCase()))
 
       return matchesSearch && matchesStatus && matchesBarangay
     })

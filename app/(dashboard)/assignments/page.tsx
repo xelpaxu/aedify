@@ -28,10 +28,13 @@ import {
   Shield,
   Bot,
   Building,
-  Sparkles
+  Sparkles,
+  ShieldCheck,
+  Info
 } from "lucide-react"
 import { useQuery, useMutation } from "convex/react"
 import { api } from "@/convex/_generated/api"
+import { useAuth } from '@/src/lib/auth'
 import { useLanguage } from '../../../src/lib/translations'
 import { useReverseGeocode, getLocationHierarchy, extractConfidenceScore } from '../../../src/lib/geoUtils'
 import { mockAssignments, mockReports } from '../../../src/lib/mockData'
@@ -414,6 +417,12 @@ function AssignmentListRow({
 }
 
 export default function AssignmentsPage() {
+  const { user } = useAuth()
+  const isCalumpangAdmin = user?.role === 'brgy-calumpang'
+  const isSouthFundidorAdmin = user?.role === 'brgy-southfundidor'
+  const isLguAdmin = user?.role === 'lgu-admin' || user?.role === 'sys-admin' || !user?.role?.startsWith('brgy-')
+  const effectiveBarangayScope = isCalumpangAdmin ? 'Calumpang' : isSouthFundidorAdmin ? 'South Fundidor' : 'all'
+
   const searchParams = useSearchParams()
   const reportId = searchParams.get('reportId')
   const { t } = useLanguage()
@@ -431,14 +440,14 @@ export default function AssignmentsPage() {
   const [activeTab, setActiveTab] = useState<'pending' | 'assignments'>('pending')
 
   // Assign modal
-  const [showAssignModal, setShowAssignModal] = useState(!!reportId)
+  const [showAssignModal, setShowAssignModal] = useState(!!reportId && !isLguAdmin)
   const [assignForm, setAssignForm] = useState({ teamId: "", reportIdLocal: reportId || "" })
 
   // Create team modal with barangay choice
   const [showCreateTeam, setShowCreateTeam] = useState(false)
   const [teamForm, setTeamForm] = useState({
     name: "",
-    barangay: "Calumpang",
+    barangay: isSouthFundidorAdmin ? "South Fundidor" : "Calumpang",
   })
   const [isCreatingTeam, setIsCreatingTeam] = useState(false)
 
@@ -462,6 +471,7 @@ export default function AssignmentsPage() {
         imageUri: r.imageUri || r.rawPhoto || '',
         processedImage: r.processedImage || '',
         rawPhoto: r.rawPhoto || r.imageUri || '',
+        barangay: r.barangay,
       }))
     }
     if (convexReports !== undefined && convexReports.length === 0) {
@@ -480,6 +490,7 @@ export default function AssignmentsPage() {
         imageUri: m.rawPhoto,
         processedImage: m.rawPhoto,
         rawPhoto: m.rawPhoto,
+        barangay: m.barangay,
       }))
     }
     return []
@@ -493,8 +504,8 @@ export default function AssignmentsPage() {
       teamId: 'team-mock' as any,
       teamName: a.assignee?.team || `Tanod Team ${idx === 0 ? 'Calumpang' : 'South Fundidor'}`,
       location: rep?.location || 'Zone 3, Brgy. Calumpang',
-      barangay: (a.assignee?.team?.includes('South') || rep?.location?.includes('South')) ? 'South Fundidor' : 'Calumpang',
-      region: (a.assignee?.team?.includes('South') || rep?.location?.includes('South')) ? 'South Fundidor' : 'Calumpang',
+      barangay: (a.assignee?.team?.includes('South') || rep?.location?.includes('South') || rep?.barangay?.includes('South')) ? 'South Fundidor' : 'Calumpang',
+      region: (a.assignee?.team?.includes('South') || rep?.location?.includes('South') || rep?.barangay?.includes('South')) ? 'South Fundidor' : 'Calumpang',
       status: a.status === 'Pending' ? 'Assigned' : a.status,
       reportStatus: rep?.risk === 'High' ? 'CRITICAL' : 'VERIFIED',
       assignedAt: Date.now() - 1000 * 60 * 60 * (idx + 1) * 3,
@@ -503,46 +514,66 @@ export default function AssignmentsPage() {
     }
   })
 
-  // ✅ IMPORTANT: Define assignedReportIds BEFORE pendingReports
+  // Assigned report IDs
   const assignedReportIds = useMemo(() => new Set((assignments || []).map((a: any) => a.reportId)), [assignments])
 
-  // Reports that are not yet assigned to any team
+  // Reports that are not yet assigned to any team (filtered by role)
   const pendingReports = useMemo(() => {
-    return (allReports || []).filter((r: any) => !assignedReportIds.has(r._id))
-  }, [allReports, assignedReportIds])
+    const unassigned = (allReports || []).filter((r: any) => !assignedReportIds.has(r._id))
+    if (effectiveBarangayScope === 'all') return unassigned
 
-  const filtered = (assignments || []).filter((a: any) => {
-    const matchesSearch =
-      (a.location || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (a.teamName || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (a.barangay || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (a.region || "").toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesStatus = filterStatus === "All" || a.status === filterStatus
-    return matchesSearch && matchesStatus
-  })
+    return unassigned.filter((r: any) => {
+      const loc = (r.locationName || r.location || '').toLowerCase()
+      const b = (r.barangay || '').toLowerCase()
+      if (effectiveBarangayScope === 'Calumpang') return loc.includes('calumpang') || b.includes('calumpang')
+      if (effectiveBarangayScope === 'South Fundidor') return loc.includes('south fundidor') || loc.includes('fundidor') || b.includes('south fundidor') || b.includes('fundidor')
+      return true
+    })
+  }, [allReports, assignedReportIds, effectiveBarangayScope])
+
+  const filtered = useMemo(() => {
+    return (assignments || []).filter((a: any) => {
+      // Role scope filter
+      if (effectiveBarangayScope !== 'all') {
+        const team = (a.teamName || '').toLowerCase()
+        const loc = (a.location || '').toLowerCase()
+        const b = (a.barangay || '').toLowerCase()
+        if (effectiveBarangayScope === 'Calumpang' && !team.includes('calumpang') && !loc.includes('calumpang') && !b.includes('calumpang')) return false
+        if (effectiveBarangayScope === 'South Fundidor' && !team.includes('south fundidor') && !team.includes('fundidor') && !loc.includes('south fundidor') && !b.includes('south fundidor') && !b.includes('fundidor')) return false
+      }
+
+      const matchesSearch =
+        (a.location || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (a.teamName || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (a.barangay || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (a.region || "").toLowerCase().includes(searchTerm.toLowerCase())
+      const matchesStatus = filterStatus === "All" || a.status === filterStatus
+      return matchesSearch && matchesStatus
+    })
+  }, [assignments, effectiveBarangayScope, searchTerm, filterStatus])
 
   const stats = {
     pending: pendingReports.length,
-    total: assignments?.length || 0,
-    inProgress: assignments?.filter((a: any) => a.status === "In Progress").length || 0,
-    completed: assignments?.filter((a: any) => a.status === "Completed").length || 0,
+    total: filtered.length,
+    inProgress: filtered.filter((a: any) => a.status === "In Progress").length,
+    completed: filtered.filter((a: any) => a.status === "Completed").length,
   }
 
   const handleCreateTeam = async () => {
-    if (!teamForm.name || !teamForm.barangay) return
+    if (!teamForm.name || !teamForm.barangay || isLguAdmin) return
     setIsCreatingTeam(true)
     try {
       await createTeam({
         name: teamForm.name,
         barangay: teamForm.barangay,
-        region: teamForm.barangay, // Keep both for Convex DB backwards compatibility
+        region: teamForm.barangay,
         avatar: teamForm.name.charAt(0).toUpperCase(),
         leaderId: "",
         memberIds: [],
         memberNames: [],
       })
       setShowCreateTeam(false)
-      setTeamForm({ name: "", barangay: "Calumpang" })
+      setTeamForm({ name: "", barangay: isSouthFundidorAdmin ? "South Fundidor" : "Calumpang" })
     } catch (e) {
       console.error(e)
     } finally {
@@ -551,11 +582,13 @@ export default function AssignmentsPage() {
   }
 
   const openAssignForReport = (targetReportId: string) => {
+    if (isLguAdmin) return
     setAssignForm(f => ({ ...f, reportIdLocal: targetReportId }))
     setShowAssignModal(true)
   }
 
   const handleCompleteAssignment = async (id: string) => {
+    if (isLguAdmin) return
     try {
       await updateStatus({ assignmentId: id as any, status: "Completed" })
     } catch (e) {
@@ -565,56 +598,68 @@ export default function AssignmentsPage() {
 
   return (
     <div className="h-full flex flex-col animate-fade-in-up max-w-[1600px] w-full mx-auto pb-10">
-      {/* Header */}
+      {/* Header with Tabs */}
       <div className="flex flex-wrap items-center justify-between gap-4 mb-6 shrink-0 rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-        <div>
-          <div className="flex items-center gap-2.5">
-            <h1 className="text-2xl md:text-3xl font-black tracking-tight text-slate-900 dark:text-white">
-              {t('fieldAssignments')}
-            </h1>
+        <div className="flex flex-wrap items-center gap-4">
+          <div>
+            <div className="flex items-center gap-2.5">
+              <h1 className="text-2xl md:text-3xl font-black tracking-tight text-slate-900 dark:text-white">
+                {t('fieldAssignments')}
+              </h1>
+            </div>
+            <p className="text-sm text-slate-500 mt-1 dark:text-slate-400">
+              {isLguAdmin ? 'District-wide surveillance oversight and team deployment status.' : t('manageDispatch')}
+            </p>
           </div>
-          <p className="text-sm text-slate-500 mt-1 dark:text-slate-400">{t('manageDispatch')}</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setShowCreateTeam(true)}
-            className="flex items-center gap-2 px-4 py-2.5 bg-primary-600 hover:bg-primary-700 text-white rounded-xl transition-all font-bold shadow-md shadow-primary-500/20 active:scale-[0.98] text-sm"
-          >
-            <Users size={16} /> {t('addTeam')}
-          </button>
-        </div>
-      </div>
 
-      {/* Tabs */}
-      <div className="flex gap-1.5 bg-slate-100 p-1.5 rounded-2xl border border-slate-200/80 mb-5 shrink-0 w-full sm:w-fit overflow-x-auto" role="tablist" aria-label="Assignment categories">
-        <button
-          onClick={() => setActiveTab('pending')}
-          role="tab"
-          aria-selected={activeTab === 'pending'}
-          className={`px-4 py-2 text-xs font-bold rounded-xl transition-all flex items-center gap-2 ${activeTab === 'pending' ? 'bg-white text-primary-800 shadow-sm' : 'text-slate-600 hover:text-slate-900'
-            }`}
-        >
-          Pending Assignments
-          {stats.pending > 0 && (
-            <span className={`ml-1 px-2 py-0.5 rounded-full text-[10px] font-black ${activeTab === 'pending' ? 'bg-amber-100 text-amber-800' : 'bg-slate-200 text-slate-600'}`}>
-              {stats.pending}
-            </span>
+          {/* Tabs */}
+          <div className="flex gap-1.5 bg-slate-100 p-1.5 rounded-2xl border border-slate-200/80 overflow-x-auto" role="tablist" aria-label="Assignment categories">
+            <button
+              onClick={() => setActiveTab('pending')}
+              role="tab"
+              aria-selected={activeTab === 'pending'}
+              className={`px-4 py-2 text-xs font-bold rounded-xl transition-all flex items-center gap-2 ${activeTab === 'pending' ? 'bg-white text-primary-800 shadow-sm' : 'text-slate-600 hover:text-slate-900'
+                }`}
+            >
+              Pending Assignments
+              {stats.pending > 0 && (
+                <span className={`ml-1 px-2 py-0.5 rounded-full text-[10px] font-black ${activeTab === 'pending' ? 'bg-amber-100 text-amber-800' : 'bg-slate-200 text-slate-600'}`}>
+                  {stats.pending}
+                </span>
+              )}
+            </button>
+            <button
+              onClick={() => setActiveTab('assignments')}
+              role="tab"
+              aria-selected={activeTab === 'assignments'}
+              className={`px-4 py-2 text-xs font-bold rounded-xl transition-all flex items-center gap-2 ${activeTab === 'assignments' ? 'bg-white text-primary-800 shadow-sm' : 'text-slate-600 hover:text-slate-900'
+                }`}
+            >
+              Active Assignments
+              {stats.total > 0 && (
+                <span className={`ml-1 px-2 py-0.5 rounded-full text-[10px] font-black ${activeTab === 'assignments' ? 'bg-primary-100 text-primary-800' : 'bg-slate-200 text-slate-600'}`}>
+                  {stats.total}
+                </span>
+              )}
+            </button>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {isLguAdmin ? (
+            <div className="flex items-center gap-1.5 px-3.5 py-2 bg-indigo-50 border border-indigo-200 text-indigo-900 rounded-xl text-xs font-bold">
+              <ShieldCheck size={14} className="text-indigo-600" />
+              LGU Monitoring View
+            </div>
+          ) : (
+            <button
+              onClick={() => setShowCreateTeam(true)}
+              className="flex items-center gap-2 px-4 py-2.5 bg-primary-600 hover:bg-primary-700 text-white rounded-xl transition-all font-bold shadow-md shadow-primary-500/20 active:scale-[0.98] text-sm cursor-pointer"
+            >
+              <Users size={16} /> {t('addTeam')}
+            </button>
           )}
-        </button>
-        <button
-          onClick={() => setActiveTab('assignments')}
-          role="tab"
-          aria-selected={activeTab === 'assignments'}
-          className={`px-4 py-2 text-xs font-bold rounded-xl transition-all flex items-center gap-2 ${activeTab === 'assignments' ? 'bg-white text-primary-800 shadow-sm' : 'text-slate-600 hover:text-slate-900'
-            }`}
-        >
-          Active Assignments
-          {stats.total > 0 && (
-            <span className={`ml-1 px-2 py-0.5 rounded-full text-[10px] font-black ${activeTab === 'assignments' ? 'bg-primary-100 text-primary-800' : 'bg-slate-200 text-slate-600'}`}>
-              {stats.total}
-            </span>
-          )}
-        </button>
+        </div>
       </div>
 
       {/* ─── PENDING REPORTS TAB ─── */}

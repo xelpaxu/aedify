@@ -1,10 +1,10 @@
 'use client'
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
-import { 
-  auth, 
-  signInWithEmailAndPassword, 
-  firebaseSignOut, 
+import {
+  auth,
+  signInWithEmailAndPassword,
+  firebaseSignOut,
   onAuthStateChanged,
   FirebaseUser
 } from './firebase'
@@ -38,16 +38,32 @@ const AuthContext = createContext<AuthContextType>({
   role: null,
   isLoading: true,
   login: async () => false,
-  logout: async () => {},
+  logout: async () => { },
 })
 
-// Map Firebase emails to roles (hardcoded for now)
+// Map Firebase emails to roles
 const ROLE_MAP: { [email: string]: Role } = {
   'lgu@aedify.com': 'lgu-admin',
   'calumpang@aedify.com': 'brgy-calumpang',
   'sanjuan@aedify.com': 'brgy-sanjuan',
   'southfundidor@aedify.com': 'brgy-southfundidor',
   'admin@aedify.com': 'sys-admin',
+  'southfundidor.admin@vecpro.ph': 'brgy-southfundidor',
+  'calumpang.admin@vecpro.ph': 'brgy-calumpang',
+  'sanjuan.admin@vecpro.ph': 'brgy-sanjuan',
+  'lgu.admin@vecpro.ph': 'lgu-admin',
+  'admin@vecpro.ph': 'sys-admin',
+}
+
+function resolveRoleFromEmail(email: string): Role | null {
+  const lower = (email || '').toLowerCase().trim()
+  if (ROLE_MAP[lower]) return ROLE_MAP[lower]
+  if (lower.includes('southfundidor') || lower.includes('fundidor')) return 'brgy-southfundidor'
+  if (lower.includes('calumpang')) return 'brgy-calumpang'
+  if (lower.includes('sanjuan') || lower.includes('san-juan')) return 'brgy-sanjuan'
+  if (lower.includes('lgu')) return 'lgu-admin'
+  if (lower.includes('admin')) return 'sys-admin'
+  return 'lgu-admin'
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -60,12 +76,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       console.log('🔥 Firebase auth state changed:', firebaseUser?.email)
       setFirebaseUser(firebaseUser)
-      
+
       if (firebaseUser) {
         // Build user from Firebase data
         const email = firebaseUser.email || ''
-        const role = ROLE_MAP[email] || null
-        
+        const role = resolveRoleFromEmail(email)
+
         const authUser: AuthUser = {
           uid: firebaseUser.uid,
           email: firebaseUser.email,
@@ -77,7 +93,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } else {
         setUser(null)
       }
-      
+
       setIsLoading(false)
     })
 

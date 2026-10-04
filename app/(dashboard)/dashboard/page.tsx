@@ -143,52 +143,98 @@ export default function DashboardPage() {
   const [isResolvingArea, setIsResolvingArea] = useState(false)
   const [areaResolveSuccess, setAreaResolveSuccess] = useState(false)
 
+  const isCalumpangAdmin = user?.role === 'brgy-calumpang'
+  const isSouthFundidorAdmin = user?.role === 'brgy-southfundidor'
+  const isLguAdmin = user?.role === 'lgu-admin' || user?.role === 'sys-admin' || !user?.role?.startsWith('brgy-')
+  const effectiveBarangay = isCalumpangAdmin ? 'calumpang' : isSouthFundidorAdmin ? 'southfundidor' : 'all'
+
   // Center Coordinates based on user role
   let center: [number, number] = [10.6953, 122.5447]
   let zoomLevel = 13
-  if (user?.role === 'brgy-calumpang') { center = [10.6975, 122.5367]; zoomLevel = 15 }
+  if (isCalumpangAdmin) { center = [10.6975, 122.5367]; zoomLevel = 15 }
   if (user?.role === 'brgy-sanjuan') { center = [10.6860, 122.5404]; zoomLevel = 15 }
-  if (user?.role === 'brgy-southfundidor') { center = [10.6883, 122.5312]; zoomLevel = 15 }
+  if (isSouthFundidorAdmin) { center = [10.6883, 122.5312]; zoomLevel = 15 }
 
-  // Unified Real & Fallback Reports
+  // Unified Real & Fallback Reports with Role Separation
   const reportsData = useMemo(() => {
+    let list: any[] = []
     if (convexReports && convexReports.length > 0) {
-      return convexReports
+      list = convexReports.map(r => ({
+        ...r,
+        barangay: r.barangay || (r.locationName?.includes('Calumpang')
+          ? 'Brgy. Calumpang'
+          : r.locationName?.includes('South Fundidor') || r.locationName?.includes('Fundidor')
+            ? 'Brgy. South Fundidor'
+            : 'Brgy. San Juan')
+      }))
+    } else {
+      list = mockReports.map(m => ({
+        _id: m.id as any,
+        _creationTime: m.timestamp.getTime(),
+        locationName: m.location,
+        userName: 'Tanod Patrol',
+        description: `${m.title} - ${m.classification}`,
+        status: m.risk === 'High' ? 'critical' : m.status === 'CLOSED' ? 'Resolved' : m.risk === 'Medium' ? 'pending' : 'verified',
+        accuracy: typeof m.confidence === 'number' ? m.confidence : 85,
+        detections: [m.classification],
+        reasoning: 'AI vector classification identified breeding hazards within local perimeter.',
+        lat: m.coordinates[0],
+        lng: m.coordinates[1],
+        verified: m.status === 'CLOSED' || m.risk !== 'High',
+        imageUri: m.rawPhoto,
+        processedImage: m.rawPhoto,
+        barangay: m.barangay,
+      }))
     }
-    return mockReports.map(m => ({
-      _id: m.id as any,
-      _creationTime: m.timestamp.getTime(),
-      locationName: m.location,
-      userName: 'Tanod Patrol',
-      description: `${m.title} - ${m.classification}`,
-      status: m.risk === 'High' ? 'critical' : m.risk === 'Medium' ? 'pending' : 'verified',
-      accuracy: typeof m.confidence === 'number' ? m.confidence : 85,
-      detections: [m.classification],
-      reasoning: 'AI vector classification identified breeding hazards within local perimeter.',
-      lat: m.coordinates[0],
-      lng: m.coordinates[1],
-      verified: m.risk !== 'High',
-      imageUri: m.rawPhoto,
-      processedImage: m.rawPhoto,
-    }))
-  }, [convexReports])
 
-  // Unified Assignments Data
+    if (effectiveBarangay === 'all') return list
+
+    return list.filter(r => {
+      const b = (r.barangay || '').toLowerCase()
+      const loc = (r.locationName || r.location || '').toLowerCase()
+      if (effectiveBarangay === 'calumpang') return b.includes('calumpang') || loc.includes('calumpang')
+      if (effectiveBarangay === 'southfundidor') return b.includes('south fundidor') || b.includes('fundidor') || loc.includes('south fundidor') || loc.includes('fundidor')
+      return true
+    })
+  }, [convexReports, effectiveBarangay])
+
+  // Unified Assignments Data with Role Separation
   const assignmentsData = useMemo(() => {
+    let list: any[] = []
     if (convexAssignments && convexAssignments.length > 0) {
-      return convexAssignments
+      list = convexAssignments.map((a: any) => ({
+        ...a,
+        barangay: a.barangay || (a.teamName?.includes('Calumpang')
+          ? 'Brgy. Calumpang'
+          : a.teamName?.includes('South Fundidor') || a.teamName?.includes('Fundidor')
+            ? 'Brgy. South Fundidor'
+            : 'Brgy. San Juan')
+      }))
+    } else {
+      list = mockAssignments.map(a => ({
+        _id: a.id as any,
+        teamName: a.assignee?.team || 'Tanod Response Team',
+        teamAvatar: a.assignee?.avatar || '',
+        region: 'Molo District',
+        location: a.assignee ? `Assigned to ${a.assignee.name}` : 'Unassigned Sector',
+        reportStatus: a.status === 'Completed' ? 'Resolved' : 'PENDING',
+        reportDescription: `Dispatch task for ${a.reportId}`,
+        assignedAt: Date.now() - 1000 * 60 * 60 * 2,
+        barangay: a.assignee?.team?.includes('Calumpang') ? 'Brgy. Calumpang' : a.assignee?.team?.includes('South Fundidor') ? 'Brgy. South Fundidor' : 'Brgy. San Juan',
+      }))
     }
-    return mockAssignments.map(a => ({
-      _id: a.id as any,
-      teamName: a.assignee?.team || 'Tanod Response Team',
-      teamAvatar: a.assignee?.avatar || '',
-      region: 'Molo District',
-      location: a.assignee ? `Assigned to ${a.assignee.name}` : 'Unassigned Sector',
-      reportStatus: a.status === 'Completed' ? 'Resolved' : 'PENDING',
-      reportDescription: `Dispatch task for ${a.reportId}`,
-      assignedAt: Date.now() - 1000 * 60 * 60 * 2,
-    }))
-  }, [convexAssignments])
+
+    if (effectiveBarangay === 'all') return list
+
+    return list.filter(a => {
+      const team = (a.teamName || '').toLowerCase()
+      const loc = (a.location || '').toLowerCase()
+      const b = (a.barangay || '').toLowerCase()
+      if (effectiveBarangay === 'calumpang') return team.includes('calumpang') || loc.includes('calumpang') || b.includes('calumpang')
+      if (effectiveBarangay === 'southfundidor') return team.includes('south fundidor') || team.includes('fundidor') || loc.includes('south fundidor') || loc.includes('fundidor') || b.includes('south fundidor') || b.includes('fundidor')
+      return true
+    })
+  }, [convexAssignments, effectiveBarangay])
 
   // Active Unresolved Reports for Map
   const activeReportsForMap = useMemo(() => {
@@ -260,7 +306,7 @@ export default function DashboardPage() {
       const isVerified = r.verified === true || r.status?.toLowerCase() === 'verified'
       const isResolved = r.status?.toLowerCase() === 'resolved' || r.status?.toLowerCase() === 'completed'
       const loc = getLocationHierarchy(r)
-      
+
       // ✅ Prioritize REAL annotated image (processedImage)
       const annotatedImg = normalizeReportImage(r.processedImage) || normalizeReportImage(r.imageUri) || '/assets/images/breeding-site.jpeg'
 
@@ -393,11 +439,11 @@ export default function DashboardPage() {
 
       {/* ----- HIERARCHICAL STAT CARDS GRID ----- */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        
+
         {/* HERO / TIER 1 METRIC: Clean Header without Directive/Live Sync tags */}
         <div className="lg:col-span-2 relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-950 via-slate-900 to-primary-950 text-white p-6 shadow-xl border border-slate-800 flex flex-col justify-between group">
           <div className="absolute top-0 right-0 w-80 h-80 bg-primary-500/10 rounded-full blur-3xl pointer-events-none group-hover:bg-primary-500/15 transition-all duration-500" />
-          
+
           <div>
             <div className="relative z-10 space-y-1.5">
               <h2 className="text-xl md:text-2xl font-black text-white tracking-tight leading-tight">
@@ -436,13 +482,23 @@ export default function DashboardPage() {
                 Review Hazard
                 <ChevronRight className="h-3.5 w-3.5" />
               </Link>
-              <Link
-                href={topRiskReport ? `/assignments?reportId=${topRiskReport._id}` : '/assignments'}
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-primary-600 hover:bg-primary-500 text-white text-xs font-bold shadow-lg shadow-primary-900/40 transition-all active:scale-95"
-              >
-                <Zap className="h-3.5 w-3.5" />
-                Dispatch Tanods
-              </Link>
+              {isLguAdmin ? (
+                <Link
+                  href="/assignments"
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-800 text-slate-300 text-xs font-bold border border-white/10"
+                >
+                  <Users className="h-3.5 w-3.5" />
+                  Monitor Deployments
+                </Link>
+              ) : (
+                <Link
+                  href={topRiskReport ? `/assignments?reportId=${topRiskReport._id}` : '/assignments'}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-primary-600 hover:bg-primary-500 text-white text-xs font-bold shadow-lg shadow-primary-900/40 transition-all active:scale-95"
+                >
+                  <Zap className="h-3.5 w-3.5" />
+                  Dispatch Tanods
+                </Link>
+              )}
             </div>
           </div>
         </div>
@@ -526,7 +582,7 @@ export default function DashboardPage() {
 
       {/* ----- LOWER SECTION: EXACT MAP (NO OFFSETS) & REAL LIVE ACTIVITY FEED ----- */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 h-[560px]">
-        
+
         {/* Interactive Map Section (2 Cols on xl) */}
         <div className="xl:col-span-2 bg-white rounded-3xl border border-slate-200/80 shadow-sm overflow-hidden flex flex-col relative">
           {/* Top Floating Map Badge */}
@@ -658,23 +714,29 @@ export default function DashboardPage() {
 
               {/* Footer */}
               <div className="p-3 border-t border-slate-100 bg-slate-50 space-y-1.5">
-                <button
-                  onClick={() => handleResolveArea(selectedCluster)}
-                  disabled={isResolvingArea}
-                  className="w-full py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-sm flex items-center justify-center gap-2 transition disabled:opacity-75"
-                >
-                  {isResolvingArea ? (
-                    <>
-                      <Loader2 size={13} className="animate-spin" />
-                      Resolving Area...
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle2 size={13} />
-                      Resolve Area ({selectedCluster.totalReports} Report{selectedCluster.totalReports > 1 ? 's' : ''})
-                    </>
-                  )}
-                </button>
+                {isLguAdmin ? (
+                  <div className="p-2.5 rounded-xl bg-slate-100 text-slate-600 text-center text-xs font-bold border border-slate-200">
+                    LGU Monitoring Mode (Action reserved for Barangay Tanod Units)
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => handleResolveArea(selectedCluster)}
+                    disabled={isResolvingArea}
+                    className="w-full py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-sm flex items-center justify-center gap-2 transition disabled:opacity-75"
+                  >
+                    {isResolvingArea ? (
+                      <>
+                        <Loader2 size={13} className="animate-spin" />
+                        Resolving Area...
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle2 size={13} />
+                        Resolve Area ({selectedCluster.totalReports} Report{selectedCluster.totalReports > 1 ? 's' : ''})
+                      </>
+                    )}
+                  </button>
+                )}
               </div>
             </div>
           )}
@@ -682,7 +744,7 @@ export default function DashboardPage() {
 
         {/* Real Live Activity Feed (1 Col on xl) */}
         <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-sm flex flex-col min-h-0">
-          
+
           {/* Activity Feed Header */}
           <div className="flex items-center justify-between pb-3 border-b border-slate-100 shrink-0">
             <div>
@@ -715,11 +777,10 @@ export default function DashboardPage() {
               <button
                 key={tab}
                 onClick={() => setActivityFilter(tab)}
-                className={`px-3 py-1 rounded-xl text-[11px] font-bold capitalize transition-all shrink-0 ${
-                  activityFilter === tab
-                    ? 'bg-primary-700 text-white shadow-sm'
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200/80'
-                }`}
+                className={`px-3 py-1 rounded-xl text-[11px] font-bold capitalize transition-all shrink-0 ${activityFilter === tab
+                  ? 'bg-primary-700 text-white shadow-sm'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200/80'
+                  }`}
               >
                 {tab === 'all' ? 'All Live' : tab}
               </button>

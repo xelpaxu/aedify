@@ -22,7 +22,6 @@ import {
   formatReportLocation
 } from '../../../src/lib/geoUtils'
 import { normalizeReportImage } from '@/src/lib/reportImages'
-import { mockReports } from '../../../src/lib/mockData'
 
 import 'leaflet/dist/leaflet.css'
 import L from 'leaflet'
@@ -184,6 +183,7 @@ function AreaDetailPanel({
   onClose: () => void
   onResolveArea: (cluster: LocationCluster) => Promise<void>
 }) {
+  const { user } = useAuth()
   const { t } = useLanguage()
   const router = useRouter()
   const [isResolving, setIsResolving] = useState(false)
@@ -331,13 +331,12 @@ function AreaDetailPanel({
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-1">
-                        <span className={`text-[9px] uppercase font-black px-1.5 py-0.5 rounded-md ${
-                          isRes
-                            ? 'bg-slate-100 text-slate-700'
-                            : isCrit
-                              ? 'bg-rose-100 text-rose-700'
-                              : 'bg-emerald-100 text-emerald-800'
-                        }`}>
+                        <span className={`text-[9px] uppercase font-black px-1.5 py-0.5 rounded-md ${isRes
+                          ? 'bg-slate-100 text-slate-700'
+                          : isCrit
+                            ? 'bg-rose-100 text-rose-700'
+                            : 'bg-emerald-100 text-emerald-800'
+                          }`}>
                           {isRes ? 'Resolved' : isCrit ? 'Critical Risk' : 'Verified'}
                         </span>
                         <span className="text-[10px] font-bold text-slate-400">
@@ -382,36 +381,45 @@ function AreaDetailPanel({
 
       {/* Bottom Actions */}
       <div className="p-4 border-t border-slate-100 space-y-2 bg-slate-50">
-        {!cluster.isAllResolved ? (
-          <button
-            onClick={handleResolveClick}
-            disabled={isResolving}
-            className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition shadow-md shadow-emerald-600/20 active:scale-[0.98] disabled:opacity-75"
-          >
-            {isResolving ? (
-              <>
-                <Loader2 size={14} className="animate-spin" />
-                Resolving All Reports in Area...
-              </>
-            ) : (
-              <>
-                <CheckCircle2 size={14} />
-                Resolve Entire Area ({cluster.totalReports} Incident{cluster.totalReports > 1 ? 's' : ''})
-              </>
-            )}
-          </button>
-        ) : (
-          <div className="w-full py-2.5 px-3 rounded-xl bg-emerald-100 text-emerald-800 text-center text-xs font-bold border border-emerald-200">
-            ✓ Entire Area Cleared & Resolved
+        {user?.role === 'lgu-admin' || user?.role === 'sys-admin' ? (
+          <div className="w-full py-2.5 px-3 rounded-xl bg-indigo-50 text-indigo-900 text-center text-xs font-bold border border-indigo-200">
+            LGU Surveillance View (Action reserved for Barangay Field Units)
           </div>
-        )}
+        ) : (
+          <>
+            {!cluster.isAllResolved ? (
+              <button
+                onClick={handleResolveClick}
+                disabled={isResolving}
+                className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition shadow-md shadow-emerald-600/20 active:scale-[0.98] disabled:opacity-75 cursor-pointer"
+              >
+                {isResolving ? (
+                  <>
+                    <Loader2 size={14} className="animate-spin" />
+                    Resolving All Reports in Area...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 size={14} />
+                    Resolve Entire Area ({cluster.totalReports} Incident{cluster.totalReports > 1 ? 's' : ''})
+                  </>
+                )}
+              </button>
+            ) : (
+              <div className="w-full py-2.5 px-3 rounded-xl bg-emerald-100 text-emerald-800 text-center text-xs font-bold border border-emerald-200">
+                ✓ Entire Area Cleared & Resolved
+              </div>
+            )}
 
-        <button
-          onClick={() => router.push(`/assignments?reportId=${topReport._id}`)}
-          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-white hover:bg-slate-100 border border-slate-200 text-slate-800 text-xs font-bold transition active:scale-[0.98]"
-        >
-          {t('assignTanodTeam')}
-        </button>
+            <button
+              onClick={() => router.push(`/assignments?reportId=${topReport._id}`)}
+              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-white hover:bg-slate-100 text-slate-800 text-xs font-bold border border-slate-200 transition cursor-pointer"
+            >
+              <Zap size={14} className="text-amber-500" />
+              Dispatch / Assign Unit
+            </button>
+          </>
+        )}
       </div>
     </div>
   )
@@ -434,9 +442,33 @@ export default function RiskMapPage() {
       return []
     }
 
+    const isCalumpangAdmin = user?.role === 'brgy-calumpang'
+    const isSouthFundidorAdmin = user?.role === 'brgy-southfundidor'
+
+    const filterByRole = (items: any[]) => {
+      if (user?.role === 'brgy-sanjuan') {
+        return items.filter(r => /san\s*juan/i.test(`${r.locationName || ''} ${r.barangay || ''}`))
+      }
+      if (isCalumpangAdmin) {
+        return items.filter(r => {
+          const loc = (r.locationName || r.location || '').toLowerCase()
+          const b = (r.barangay || '').toLowerCase()
+          return loc.includes('calumpang') || b.includes('calumpang')
+        })
+      }
+      if (isSouthFundidorAdmin) {
+        return items.filter(r => {
+          const loc = (r.locationName || r.location || '').toLowerCase()
+          const b = (r.barangay || '').toLowerCase()
+          return loc.includes('south fundidor') || loc.includes('fundidor') || b.includes('south fundidor') || b.includes('fundidor')
+        })
+      }
+      return items
+    }
+
     if (allReports && allReports.length > 0) {
       const filtered = allReports
-        .filter(r => r.verified === true && r.status !== "Completed" && r.status !== "dismissed")
+        .filter(r => !['dismissed', 'completed', 'resolved', 'closed', 'rejected'].includes(r.status?.trim().toLowerCase()) && r.resolvedAt == null)
         .map(r => ({
           ...r,
           imageUri: r.imageUri || r.processedImage || '',
@@ -444,35 +476,11 @@ export default function RiskMapPage() {
           rawPhoto: r.processedImage || r.imageUri || '',
         }))
 
-      if (filtered.length > 0) {
-        return filtered
-      }
-      return []
-    }
-
-    // Fallback to mock data if database is empty
-    if (allReports !== undefined && allReports.length === 0) {
-      return mockReports.filter(m => m.status === 'OPEN').map(m => ({
-        _id: m.id as any,
-        lat: m.coordinates[0],
-        lng: m.coordinates[1],
-        locationName: m.location,
-        status: m.risk === 'High' ? 'CRITICAL' : m.risk === 'Medium' ? 'MODERATE' : 'SAFE',
-        verified: true,
-        accuracy: typeof m.confidence === 'number' ? m.confidence : 85,
-        userName: 'Tanod Patrol',
-        description: m.title,
-        detections: [m.classification],
-        reasoning: 'High mosquito activity and potential breeding habitat identified.',
-        _creationTime: m.timestamp instanceof Date ? m.timestamp.getTime() : Date.now(),
-        imageUri: m.rawPhoto || '/assets/images/breeding-site.jpeg',
-        processedImage: m.rawPhoto || '/assets/images/breeding-site.jpeg',
-        userId: 'mock-user-id',
-      })) as any[]
+      return filterByRole(filtered)
     }
 
     return []
-  }, [allReports])
+  }, [allReports, user?.role])
 
   // 2. Group reports by exact location without offsets
   const locationClusters: LocationCluster[] = useMemo(() => {
@@ -510,6 +518,7 @@ export default function RiskMapPage() {
     <>
       {showSim && (
         <SimulationField
+          key={JSON.stringify(verifiedRaw.map(r => [r._id, r.status, r.resolvedAt, r.lat, r.lng, r.accuracy, r.verified]))}
           onClose={() => setShowSim(false)}
           reports={verifiedRaw.map((r: any) => ({
             _id: r._id,
@@ -519,6 +528,7 @@ export default function RiskMapPage() {
             status: r.status,
             verified: r.verified,
             accuracy: r.accuracy,
+            resolvedAt: r.resolvedAt,
           }))}
         />
       )}

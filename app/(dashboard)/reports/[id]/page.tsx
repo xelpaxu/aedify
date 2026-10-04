@@ -1007,52 +1007,64 @@ export default function ReportDetailPage() {
               Vector Response Actions
             </h3>
 
-            <div className="space-y-2.5">
-              {/* Verify Button */}
-              <button
-                disabled={report.verified || isVerifying}
-                onClick={handleVerify}
-                className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-2xl font-bold text-sm transition-all shadow-md ${report.verified
-                  ? 'bg-emerald-100 text-emerald-800 cursor-default border border-emerald-300'
-                  : 'bg-primary-600 hover:bg-primary-700 text-white shadow-primary-500/20 active:scale-95'
-                  } disabled:opacity-80`}
-              >
-                {isVerifying ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Verifying Report...
-                  </>
-                ) : report.verified ? (
-                  <>
-                    <CheckCircle className="h-4 w-4" />
-                    {isModified ? 'Admin Validated' : 'Report Verified'}
-                  </>
-                ) : (
-                  <>
-                    <ShieldCheck className="h-4 w-4" />
-                    Verify Report
-                  </>
-                )}
-              </button>
+            {user?.role === 'lgu-admin' || user?.role === 'sys-admin' ? (
+              <div className="p-3.5 rounded-2xl bg-indigo-50 border border-indigo-200 text-indigo-900 text-xs leading-relaxed space-y-1">
+                <div className="font-bold flex items-center gap-1.5 text-indigo-950">
+                  <ShieldCheck className="h-4 w-4 text-indigo-600" />
+                  LGU Surveillance Mode (Read-Only)
+                </div>
+                <p className="text-[11px] text-indigo-800">
+                  Hazard verification, dossier corrections, and tanod team dispatches are managed directly by local Barangay Officers.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-2.5">
+                {/* Verify Button */}
+                <button
+                  disabled={report.verified || isVerifying}
+                  onClick={handleVerify}
+                  className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-2xl font-bold text-sm transition-all shadow-md ${report.verified
+                    ? 'bg-emerald-100 text-emerald-800 cursor-default border border-emerald-300'
+                    : 'bg-primary-600 hover:bg-primary-700 text-white shadow-primary-500/20 active:scale-95'
+                    } disabled:opacity-80`}
+                >
+                  {isVerifying ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Verifying Report...
+                    </>
+                  ) : report.verified ? (
+                    <>
+                      <CheckCircle className="h-4 w-4" />
+                      {isModified ? 'Admin Validated' : 'Report Verified'}
+                    </>
+                  ) : (
+                    <>
+                      <ShieldCheck className="h-4 w-4" />
+                      Verify Report
+                    </>
+                  )}
+                </button>
 
-              {/* Assign Tanod Team Shortcut */}
-              <button
-                onClick={() => router.push(`/assignments?reportId=${report._id || reportId}`)}
-                className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-2xl font-bold text-sm bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200/80 transition-all active:scale-95"
-              >
-                <Users className="h-4 w-4" />
-                Dispatch Tanod Team
-              </button>
+                {/* Assign Tanod Team Shortcut */}
+                <button
+                  onClick={() => router.push(`/assignments?reportId=${report._id || reportId}`)}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-2xl font-bold text-sm bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200/80 transition-all active:scale-95"
+                >
+                  <Users className="h-4 w-4" />
+                  Dispatch Tanod Team
+                </button>
 
-              {/* Modify Report */}
-              <button
-                onClick={() => setIsEditModalOpen(true)}
-                className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-2xl font-bold text-sm bg-slate-100 hover:bg-slate-200 text-slate-800 transition-colors"
-              >
-                <Pencil className="h-4 w-4" />
-                Modify and Validate
-              </button>
-            </div>
+                {/* Modify Report */}
+                <button
+                  onClick={() => setIsEditModalOpen(true)}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-2xl font-bold text-sm bg-slate-100 hover:bg-slate-200 text-slate-800 transition-colors"
+                >
+                  <Pencil className="h-4 w-4" />
+                  Modify and Validate
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>

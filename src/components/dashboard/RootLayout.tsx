@@ -1,6 +1,6 @@
 'use client'
 
-import { ReactNode, useState } from 'react'
+import { ReactNode, useState, useEffect } from 'react'
 import { Sidebar } from './Sidebar'
 import { Search, ChevronDown, LogOut, Settings, User, Menu } from 'lucide-react'
 import { useAuth } from '../../lib/auth'
@@ -11,6 +11,7 @@ import { ThemeToggle } from '../ThemeToggle'
 import { useQuery } from 'convex/react'
 import { api } from '../../../convex/_generated/api'
 import { NotificationCenter } from './NotificationCenter'
+import { QuickSearchModal } from './QuickSearchModal'
 
 interface RootLayoutProps {
   children: ReactNode
@@ -22,6 +23,18 @@ export function RootLayout({ children }: RootLayoutProps) {
   const { t } = useLanguage()
   const [showProfile, setShowProfile] = useState(false)
   const [showMobileMenu, setShowMobileMenu] = useState(false)
+  const [showSearch, setShowSearch] = useState(false)
+
+  useEffect(() => {
+    const handleShortcut = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && !event.altKey && !event.shiftKey && event.key.toLowerCase() === 'p') {
+        event.preventDefault()
+        if (!event.repeat) setShowSearch(open => !open)
+      }
+    }
+    window.addEventListener('keydown', handleShortcut)
+    return () => window.removeEventListener('keydown', handleShortcut)
+  }, [])
 
   const getProfileTitle = () => {
     switch (user?.role) {
@@ -87,14 +100,14 @@ export function RootLayout({ children }: RootLayoutProps) {
           {/* Right section */}
           <div className="flex items-center gap-3 md:gap-4">
             {/* Search - hidden on mobile */}
-            <button className="hidden md:flex items-center gap-2.5 px-4 py-2 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-xl transition-all text-sm font-medium border border-slate-200/80 bg-white/50">
+            <button onClick={() => setShowSearch(true)} aria-haspopup="dialog" aria-label="Search pages" aria-keyshortcuts="Control+p Meta+p" className="hidden md:flex items-center gap-2.5 px-4 py-2 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-xl transition-all text-sm font-medium border border-slate-200/80 bg-white/50">
               <Search size={16} strokeWidth={1.8} />
               <span className="text-slate-400">Search...</span>
-              <kbd className="text-[10px] font-mono bg-slate-100 px-2 py-0.5 rounded text-slate-400 ml-1">⌘K</kbd>
+              <kbd className="text-[10px] font-mono bg-slate-100 px-2 py-0.5 rounded text-slate-400 ml-1">Ctrl P</kbd>
             </button>
 
             {/* Search icon - visible on mobile */}
-            <button className="md:hidden p-2.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-all">
+            <button onClick={() => setShowSearch(true)} aria-haspopup="dialog" aria-label="Search pages" className="md:hidden p-2.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-all">
               <Search size={18} strokeWidth={1.8} />
             </button>
 
@@ -211,6 +224,7 @@ export function RootLayout({ children }: RootLayoutProps) {
           {children}
         </section>
       </main>
+      {showSearch && <QuickSearchModal isOpen onClose={() => setShowSearch(false)} />}
     </div>
   )
 }
