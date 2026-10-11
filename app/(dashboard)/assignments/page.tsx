@@ -93,7 +93,7 @@ function PendingReportCard({
   }, [rawImageUrl])
 
   const riskLevel = getRiskLevel(report.status)
-  const timeSince = getTimeSince(report._creationTime)
+  const timeSince = getTimeSince(report.timestamp || report._creationTime)
   const confidenceScore = extractConfidenceScore(report)
 
   return (
@@ -210,7 +210,7 @@ function AssignmentCard({
     setImgSrc(rawImageUrl)
   }, [rawImageUrl])
 
-  const timeSince = report ? getTimeSince(report._creationTime) : 'Recent'
+  const timeSince = report ? getTimeSince(report.timestamp || report._creationTime) : 'Recent'
   const riskLevel = report ? getRiskLevel(report.status) : { label: 'Active', color: 'text-slate-600', bg: 'bg-slate-100', icon: Clock }
   const barangayName = assignment.barangay || assignment.region || 'Calumpang'
   const confidenceScore = extractConfidenceScore(report || assignment)
@@ -387,8 +387,8 @@ function AssignmentListRow({
           <span className="text-xs text-slate-600 font-medium">
             {assignment.assignedAt ? new Date(assignment.assignedAt).toLocaleDateString() : '—'}
           </span>
-          {report?._creationTime && (
-            <p className="text-[10px] text-slate-400">{getTimeSince(report._creationTime)}</p>
+          {(report?.timestamp || report?._creationTime) && (
+            <p className="text-[10px] text-slate-400">{getTimeSince(report.timestamp || report._creationTime)}</p>
           )}
         </div>
       </td>
@@ -458,7 +458,8 @@ export default function AssignmentsPage() {
       return convexReports.map((r: any) => ({
         ...r,
         _id: r._id,
-        _creationTime: r._creationTime,
+        _creationTime: r.timestamp || r._creationTime,
+        timestamp: r.timestamp || r._creationTime,
         locationName: r.locationName || r.location,
         userName: r.userName || 'Tanod Patrol',
         description: r.description || 'Vector breeding site awaiting tanod dispatch.',

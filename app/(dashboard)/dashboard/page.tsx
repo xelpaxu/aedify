@@ -336,7 +336,7 @@ export default function DashboardPage() {
         subtitle: r.detections?.[0] || r.description || 'Stagnant water breeding habitat',
         location: loc.formatted,
         severity,
-        timestamp: r._creationTime || (r.timestamp ? new Date(r.timestamp).getTime() : Date.now()),
+        timestamp: (typeof r.timestamp === 'number' ? r.timestamp : r.timestamp ? new Date(r.timestamp).getTime() : r._creationTime || Date.now()),
         thumbnail: annotatedImg,
         actor: r.userName || 'Tanod Patrol',
         link: `/reports/${r._id}`,
@@ -698,7 +698,7 @@ export default function DashboardPage() {
 
                         <div className="flex items-center justify-between pt-1 border-t border-slate-200/60">
                           <span className="text-[10px] font-semibold text-slate-500">
-                            {rep._creationTime ? new Date(rep._creationTime).toLocaleDateString() : 'Active'}
+                            {(rep.timestamp || rep._creationTime) ? new Date(rep.timestamp || rep._creationTime).toLocaleDateString() : 'Active'}
                           </span>
                           <Link
                             href={`/reports/${rep._id}`}

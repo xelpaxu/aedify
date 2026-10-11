@@ -586,8 +586,8 @@ export default function AssignmentDetailPage() {
                   <Calendar className="h-3.5 w-3.5 text-slate-400" />
                   {assignment?.assignedAt
                     ? new Date(assignment.assignedAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
-                    : reportObj?._creationTime
-                      ? new Date(reportObj._creationTime).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+                    : (reportObj?.timestamp || reportObj?._creationTime)
+                      ? new Date(reportObj.timestamp || reportObj._creationTime).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
                       : 'N/A'}
                 </span>
               </div>

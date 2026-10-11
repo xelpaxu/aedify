@@ -348,7 +348,7 @@ function AreaDetailPanel({
                       </p>
                       <p className="text-[10px] text-slate-500 mt-0.5 flex items-center gap-1">
                         <User size={10} className="text-slate-400" />
-                        {report.userName || 'Tanod Officer'} • {report._creationTime ? new Date(report._creationTime).toLocaleDateString() : 'N/A'}
+                        {report.userName || 'Tanod Officer'} • {(report.timestamp || report._creationTime) ? new Date(report.timestamp || report._creationTime).toLocaleDateString() : 'N/A'}
                       </p>
                     </div>
                   </div>

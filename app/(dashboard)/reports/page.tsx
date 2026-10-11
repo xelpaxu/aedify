@@ -15,6 +15,7 @@ import { mockReports } from '../../../src/lib/mockData'
 interface Report {
   _id: string
   _creationTime: number
+  timestamp?: number
   locationName?: string
   location?: string
   userName?: string
@@ -168,7 +169,7 @@ function ReportCard({ report, getStatusBadge, t }: { report: Report; getStatusBa
         </span>
         <span className="flex items-center gap-1.5 text-slate-400">
 
-          {report._creationTime ? new Date(report._creationTime).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'N/A'}
+          {(report.timestamp || report._creationTime) ? new Date(report.timestamp || report._creationTime).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'N/A'}
         </span>
         <span className="flex items-center gap-1 text-primary-700 font-bold group-hover:translate-x-0.5 transition-transform">
           <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
@@ -229,7 +230,7 @@ function ReportListItem({ report, getStatusBadge, t }: { report: Report; getStat
             <span>•</span>
             <span className="flex items-center gap-1">
 
-              {report._creationTime ? new Date(report._creationTime).toLocaleDateString() : 'N/A'}
+              {(report.timestamp || report._creationTime) ? new Date(report.timestamp || report._creationTime).toLocaleDateString() : 'N/A'}
             </span>
           </div>
         </div>
@@ -380,9 +381,9 @@ export default function ReportsPage() {
     filtered.sort((a: Report, b: Report) => {
       switch (sortBy) {
         case 'newest':
-          return (b._creationTime || 0) - (a._creationTime || 0)
+          return (b.timestamp || b._creationTime || 0) - (a.timestamp || a._creationTime || 0)
         case 'oldest':
-          return (a._creationTime || 0) - (b._creationTime || 0)
+          return (a.timestamp || a._creationTime || 0) - (b.timestamp || b._creationTime || 0)
         case 'status': {
           const statusOrder: { [key: string]: number } = { critical: 0, pending: 1, verified: 2 }
           const statusA = a.status?.toLowerCase() || 'pending'

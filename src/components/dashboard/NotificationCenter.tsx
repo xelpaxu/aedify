@@ -158,7 +158,7 @@ export function NotificationCenter() {
             reportId: String(r._id),
             type: isCrit ? 'critical_report' : 'new_report',
             read: r.status?.toLowerCase() === 'resolved' || locallyReadIds.has(`rep-notif-${r._id}`),
-            createdAt: r._creationTime || Date.now(),
+            createdAt: r.timestamp || r._creationTime || Date.now(),
             isCritical: isCrit,
             thumbnail: thumb,
           })

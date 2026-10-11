@@ -191,7 +191,7 @@ export default function AnalyticsPage() {
 
       // 2. Time Filter
       if (timeframe !== 'all') {
-        const created = rep._creationTime || (rep.timestamp ? new Date(rep.timestamp).getTime() : 0)
+        const created = (typeof rep.timestamp === 'number' ? rep.timestamp : rep.timestamp ? new Date(rep.timestamp).getTime() : rep._creationTime || 0)
         if (created > 0 && (now - created) > maxAge) {
           return false
         }
@@ -218,8 +218,9 @@ export default function AnalyticsPage() {
 
       if (isResolved) {
         resolved++
-        if (rep.resolvedAt && rep._creationTime) {
-          const diffHours = (rep.resolvedAt - rep._creationTime) / (1000 * 60 * 60)
+        const reportCreated = rep.timestamp || rep._creationTime;
+        if (rep.resolvedAt && reportCreated) {
+          const diffHours = (rep.resolvedAt - reportCreated) / (1000 * 60 * 60)
           if (diffHours > 0 && diffHours < 500) {
             turnaroundTotalHours += diffHours
             turnaroundCount++
@@ -328,7 +329,7 @@ export default function AnalyticsPage() {
       let dayResolved = 0
 
       filteredReports.forEach((r: any) => {
-        const cDate = new Date(r._creationTime || (r.timestamp ? new Date(r.timestamp).getTime() : 0))
+        const cDate = new Date(r.timestamp ? (typeof r.timestamp === 'number' ? r.timestamp : new Date(r.timestamp).getTime()) : (r._creationTime || 0))
         if (cDate.toDateString() === d.toDateString()) {
           dayReports++
         }

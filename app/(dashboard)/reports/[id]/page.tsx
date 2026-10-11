@@ -703,7 +703,7 @@ export default function ReportDetailPage() {
             <span>•</span>
             <span className="flex items-center gap-1">
               <Calendar className="h-3.5 w-3.5 text-slate-400" />
-              {report._creationTime ? new Date(report._creationTime).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : 'N/A'}
+              {(report.timestamp || report._creationTime) ? new Date(report.timestamp || report._creationTime).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : 'N/A'}
             </span>
           </p>
         </div>
