@@ -82,7 +82,7 @@ export const processAndSaveReport = action({
       locationName: args.locationName,
       lat: args.lat,
       lng: args.lng,
-      status: "pending",
+      status: riskLevel,
       riskLevel: riskLevel,
       clerkUserId: identity.subject,
       barangay: user?.barangay,

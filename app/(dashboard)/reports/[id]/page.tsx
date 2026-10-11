@@ -163,6 +163,7 @@ function ModifyReportModal({
     analysisIssue: '' as AnalysisIssue | '',
     correctedClassification: '',
     correctedFindings: '',
+    riskLevel: '',
     lat: 0,
     lng: 0
   })
@@ -177,6 +178,7 @@ function ModifyReportModal({
         analysisIssue: report.analysisIssue || '',
         correctedClassification: report.correctedClassification || '',
         correctedFindings: report.correctedFindings || '',
+        riskLevel: report.riskLevel || report.status || 'CRITICAL',
         lat: report.lat ?? 10.68498,
         lng: report.lng ?? 122.53764
       })
@@ -302,6 +304,23 @@ function ModifyReportModal({
                   className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none transition resize-none"
                   placeholder="Incident details..."
                 />
+              </div>
+
+              {/* Assessed Risk Level */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wider">
+                  Assessed Risk Level
+                </label>
+                <select
+                  value={formData.riskLevel}
+                  onChange={(e) => setFormData({ ...formData, riskLevel: e.target.value })}
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-900 focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none transition cursor-pointer"
+                >
+                  <option value="CRITICAL">Critical Risk</option>
+                  <option value="HIGH RISK">High Risk</option>
+                  <option value="MODERATE">Moderate Risk</option>
+                  <option value="LOW RISK">Low Risk</option>
+                </select>
               </div>
 
               <fieldset className="space-y-4 rounded-2xl border border-amber-200 bg-amber-50/50 p-4">
@@ -468,35 +487,65 @@ export default function ReportDetailPage() {
 
   const locHierarchy = useReverseGeocode(report?.lat, report?.lng, report?.locationName)
 
-  const getStatusBadge = (status: string) => {
-    switch (status?.toLowerCase()) {
-      case 'critical':
-        return {
-          color: 'bg-rose-500 text-white',
-          bg: 'bg-rose-50',
-          text: 'text-rose-700',
-          border: 'border-rose-200',
-          label: 'Critical Risk',
-          icon: AlertCircle
-        }
-      case 'verified':
-        return {
-          color: 'bg-emerald-600 text-white',
-          bg: 'bg-emerald-50',
-          text: 'text-emerald-700',
-          border: 'border-emerald-200',
-          label: 'Verified for Response',
-          icon: CheckCircle
-        }
-      default:
-        return {
-          color: 'bg-amber-500 text-white',
-          bg: 'bg-amber-50',
-          text: 'text-amber-700',
-          border: 'border-amber-200',
-          label: 'Pending Verification',
-          icon: Clock
-        }
+  const getStatusBadge = (status: string, riskLevel?: string) => {
+    const eff = (riskLevel || status || '').toLowerCase()
+    if (status?.toLowerCase() === 'resolved' || status?.toLowerCase() === 'completed') {
+      return {
+        color: 'bg-slate-800 text-white',
+        bg: 'bg-slate-50',
+        text: 'text-slate-700',
+        border: 'border-slate-200',
+        label: 'Resolved',
+        icon: CheckCircle
+      }
+    }
+    if (eff === 'critical' || eff === 'critical risk') {
+      return {
+        color: 'bg-rose-500 text-white',
+        bg: 'bg-rose-50',
+        text: 'text-rose-700',
+        border: 'border-rose-200',
+        label: 'Critical Risk',
+        icon: AlertCircle
+      }
+    }
+    if (eff === 'high' || eff === 'high risk') {
+      return {
+        color: 'bg-orange-500 text-white',
+        bg: 'bg-orange-50',
+        text: 'text-orange-700',
+        border: 'border-orange-200',
+        label: 'High Risk',
+        icon: AlertCircle
+      }
+    }
+    if (eff === 'moderate' || eff === 'moderate risk' || eff === 'medium') {
+      return {
+        color: 'bg-amber-500 text-white',
+        bg: 'bg-amber-50',
+        text: 'text-amber-700',
+        border: 'border-amber-200',
+        label: 'Moderate Risk',
+        icon: AlertTriangle
+      }
+    }
+    if (eff === 'low' || eff === 'low risk') {
+      return {
+        color: 'bg-emerald-600 text-white',
+        bg: 'bg-emerald-50',
+        text: 'text-emerald-700',
+        border: 'border-emerald-200',
+        label: 'Low Risk',
+        icon: ShieldCheck
+      }
+    }
+    return {
+      color: 'bg-amber-500 text-white',
+      bg: 'bg-amber-50',
+      text: 'text-amber-700',
+      border: 'border-amber-200',
+      label: status || 'Moderate Risk',
+      icon: Clock
     }
   }
 
@@ -536,6 +585,8 @@ export default function ReportDetailPage() {
         await updateReport({
           id: report._id as Id<"reports">,
           ...formData,
+          status: formData.riskLevel,
+          riskLevel: formData.riskLevel,
           reviewedBy: user?.displayName || user?.email || "Administrator"
         })
       }
@@ -577,7 +628,7 @@ export default function ReportDetailPage() {
     )
   }
 
-  const status = getStatusBadge(report.status)
+  const status = getStatusBadge(report.status, report.riskLevel)
   const StatusIcon = status.icon
   const isModified = report.reviewType === 'admin-modified'
   const imageUrl = getDisplayImage(report, isModified ? 'raw' : viewMode)
@@ -623,9 +674,24 @@ export default function ReportDetailPage() {
             <h1 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">
               {locHierarchy.formatted}
             </h1>
+            {/* Risk Level Badge */}
             <span className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-black uppercase tracking-wider ${status.color} shadow-sm`}>
               <StatusIcon className="h-3.5 w-3.5" />
               {status.label}
+            </span>
+            {/* Verification Status Badge */}
+            <span className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-black uppercase tracking-wider ${report.verified ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : 'bg-amber-100 text-amber-800 border border-amber-300'} shadow-sm`}>
+              {report.verified ? (
+                <>
+                  <CheckCircle className="h-3.5 w-3.5 text-emerald-600" />
+                  Verified for Response
+                </>
+              ) : (
+                <>
+                  <Clock className="h-3.5 w-3.5 text-amber-600" />
+                  Pending Verification
+                </>
+              )}
             </span>
           </div>
 

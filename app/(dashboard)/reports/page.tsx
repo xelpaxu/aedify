@@ -20,6 +20,7 @@ interface Report {
   userName?: string
   description?: string
   status?: string
+  riskLevel?: string
   accuracy?: number
   confidence?: number
   detections?: string[]
@@ -71,8 +72,8 @@ function FilterBarSkeleton() {
 }
 
 // ----- REPORT CARD (Grid View) -----
-function ReportCard({ report, getStatusBadge, t }: { report: Report; getStatusBadge: (status: string) => StatusBadge; t: (key: string) => string }) {
-  const status = getStatusBadge(report.status || '')
+function ReportCard({ report, getStatusBadge, t }: { report: Report; getStatusBadge: (status: string, riskLevel?: string) => StatusBadge; t: (key: string) => string }) {
+  const status = getStatusBadge(report.status || '', report.riskLevel)
   const locHierarchy = useReverseGeocode(report.lat, report.lng, report.locationName || report.location)
   const displayImage = getReportPreview(report)
 
@@ -110,14 +111,18 @@ function ReportCard({ report, getStatusBadge, t }: { report: Report; getStatusBa
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
 
           {/* Top Status & Confidence Badges */}
-          <div className="absolute top-3 left-3 right-3 flex items-center justify-between">
-            <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider shadow-md backdrop-blur-md ${status.color}`}>
-              <span className={`w-1.5 h-1.5 rounded-full ${status.dot}`} />
-              {status.label}
-            </span>
+          <div className="absolute top-3 left-3 right-3 flex items-center justify-between gap-2">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider shadow-md backdrop-blur-md ${status.color}`}>
+                <span className={`w-1.5 h-1.5 rounded-full ${status.dot}`} />
+                {status.label}
+              </span>
+              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold backdrop-blur-md shadow-sm ${report.verified ? 'bg-emerald-500/90 text-white border border-emerald-400/40' : 'bg-amber-500/90 text-white border border-amber-400/40'}`}>
+                {report.verified ? t('verified') : t('pending')}
+              </span>
+            </div>
 
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-slate-900/80 backdrop-blur-md text-white border border-white/15">
-
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-slate-900/80 backdrop-blur-md text-white border border-white/15 shrink-0">
               {confidenceScore}% AI Confidence
             </span>
           </div>
@@ -174,8 +179,8 @@ function ReportCard({ report, getStatusBadge, t }: { report: Report; getStatusBa
 }
 
 // ----- REPORT LIST ITEM (List View) -----
-function ReportListItem({ report, getStatusBadge, t }: { report: Report; getStatusBadge: (status: string) => StatusBadge; t: (key: string) => string }) {
-  const status = getStatusBadge(report.status || '')
+function ReportListItem({ report, getStatusBadge, t }: { report: Report; getStatusBadge: (status: string, riskLevel?: string) => StatusBadge; t: (key: string) => string }) {
+  const status = getStatusBadge(report.status || '', report.riskLevel)
   const locHierarchy = useReverseGeocode(report.lat, report.lng, report.locationName || report.location)
   const displayImage = getReportPreview(report)
 
@@ -231,7 +236,7 @@ function ReportListItem({ report, getStatusBadge, t }: { report: Report; getStat
       </div>
 
       {/* Right meta and status */}
-      <div className="col-span-2 flex flex-wrap items-center gap-2.5 border-t border-slate-100 pt-3 dark:border-slate-800">
+      <div className="col-span-2 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3 dark:border-slate-800">
         <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
 
           {confidenceScore}% AI Confidence
@@ -240,6 +245,10 @@ function ReportListItem({ report, getStatusBadge, t }: { report: Report; getStat
         <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold ${status.color}`}>
           <span className={`w-1.5 h-1.5 rounded-full ${status.dot}`} />
           {status.label}
+        </span>
+
+        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold ${report.verified ? 'bg-emerald-50 text-emerald-700 border border-emerald-300' : 'bg-amber-50 text-amber-700 border border-amber-300'}`}>
+          {report.verified ? t('verified') : t('pending')}
         </span>
 
         <span className="ml-auto inline-flex items-center justify-center rounded-lg p-2 text-primary-700 transition-colors group-hover:bg-primary-50 dark:text-primary-300 dark:group-hover:bg-primary-950" aria-label={t('view')}>
@@ -293,38 +302,53 @@ export default function ReportsPage() {
     }))
   }, [convexReports])
 
-  const getStatusBadge = (status: string): StatusBadge => {
-    const normalizedStatus = status?.toLowerCase() || ''
-    switch (normalizedStatus) {
-      case 'resolved':
-      case 'completed':
-        return {
-          color: 'bg-slate-800 text-white',
-          label: 'Resolved',
-          dot: 'bg-emerald-400',
-          border: 'border-slate-300'
-        }
-      case 'critical':
-        return {
-          color: 'bg-rose-500 text-white',
-          label: t('critical'),
-          dot: 'bg-rose-300',
-          border: 'border-rose-200'
-        }
-      case 'verified':
-        return {
-          color: 'bg-emerald-600 text-white',
-          label: t('verified'),
-          dot: 'bg-emerald-300',
-          border: 'border-emerald-200'
-        }
-      default:
-        return {
-          color: 'bg-amber-500 text-white',
-          label: t('pending'),
-          dot: 'bg-amber-300',
-          border: 'border-amber-200'
-        }
+  const getStatusBadge = (status: string, riskLevel?: string): StatusBadge => {
+    const eff = (riskLevel || status || '').toLowerCase()
+    if (status?.toLowerCase() === 'resolved' || status?.toLowerCase() === 'completed') {
+      return {
+        color: 'bg-slate-800 text-white',
+        label: 'Resolved',
+        dot: 'bg-emerald-400',
+        border: 'border-slate-300'
+      }
+    }
+    if (eff === 'critical' || eff === 'critical risk') {
+      return {
+        color: 'bg-rose-500 text-white',
+        label: t('critical'),
+        dot: 'bg-rose-300',
+        border: 'border-rose-200'
+      }
+    }
+    if (eff === 'high' || eff === 'high risk') {
+      return {
+        color: 'bg-orange-500 text-white',
+        label: 'High Risk',
+        dot: 'bg-orange-300',
+        border: 'border-orange-200'
+      }
+    }
+    if (eff === 'moderate' || eff === 'moderate risk' || eff === 'medium') {
+      return {
+        color: 'bg-amber-500 text-white',
+        label: 'Moderate Risk',
+        dot: 'bg-amber-300',
+        border: 'border-amber-200'
+      }
+    }
+    if (eff === 'low' || eff === 'low risk') {
+      return {
+        color: 'bg-emerald-600 text-white',
+        label: 'Low Risk',
+        dot: 'bg-emerald-300',
+        border: 'border-emerald-200'
+      }
+    }
+    return {
+      color: 'bg-amber-500 text-white',
+      label: status || 'Pending',
+      dot: 'bg-amber-300',
+      border: 'border-amber-200'
     }
   }
 
@@ -338,7 +362,11 @@ export default function ReportsPage() {
         report.userName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         report.description?.toLowerCase().includes(searchTerm.toLowerCase())
 
-      const matchesStatus = statusFilter === 'all' || report.status?.toLowerCase() === statusFilter
+      const matchesStatus = statusFilter === 'all' ||
+        (statusFilter === 'pending' && !report.verified && report.status?.toLowerCase() !== 'resolved') ||
+        (statusFilter === 'verified' && report.verified && report.status?.toLowerCase() !== 'resolved') ||
+        (statusFilter === 'critical' && (report.status?.toLowerCase() === 'critical' || report.riskLevel?.toLowerCase() === 'critical')) ||
+        (statusFilter === 'resolved' && (report.status?.toLowerCase() === 'resolved' || report.status?.toLowerCase() === 'completed'))
 
       const matchesBarangay = effectiveBarangayScope === 'all' ||
         loc.barangay.toLowerCase().includes(effectiveBarangayScope.toLowerCase()) ||

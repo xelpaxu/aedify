@@ -56,7 +56,7 @@ export const verifyReport = mutation({
     const existing = await ctx.db.get(id);
     if (!existing) throw new Error("Report not found");
 
-    await ctx.db.patch(id, { verified: true, status: "verified" });
+    await ctx.db.patch(id, { verified: true });
     return { success: true };
   },
 });
@@ -78,6 +78,8 @@ export const modifyReport = mutation({
     correctedClassification: v.string(),
     correctedFindings: v.string(),
     reviewedBy: v.string(),
+    status: v.optional(v.string()),
+    riskLevel: v.optional(v.string()),
   },
   handler: async (ctx, { id, ...fields }) => {
     const existing = await ctx.db.get(id);
@@ -95,6 +97,7 @@ export const modifyReport = mutation({
       !Number.isFinite(fields.lng) || Math.abs(fields.lng) > 180) {
       throw new Error("Enter valid latitude and longitude coordinates.");
     }
+    const newRisk = fields.riskLevel || fields.status || existing.riskLevel || existing.status;
     await ctx.db.patch(id, {
       ...fields,
       locationName: fields.locationName.trim(),
@@ -104,7 +107,8 @@ export const modifyReport = mutation({
       reviewType: "admin-modified",
       reviewedAt: Date.now(),
       verified: true,
-      status: "verified",
+      status: newRisk,
+      riskLevel: newRisk,
     });
     return { success: true };
   },
@@ -399,18 +403,18 @@ export const resolveAreaReports = mutation({
   },
 });
 
-// Unverify a report (reverts to pending state)
+// Unverify a report (reverts to unverified state, preserves risk level)
 export const unverifyReport = mutation({
   args: { id: v.id("reports") },
   handler: async (ctx, { id }) => {
     const existing = await ctx.db.get(id);
     if (!existing) throw new Error("Report not found");
-    await ctx.db.patch(id, { verified: false, status: "pending" });
+    await ctx.db.patch(id, { verified: false });
     return { success: true };
   },
 });
 
-// Reset all unreviewed reports to pending
+// Reset all unreviewed reports to unverified while restoring their risk levels
 export const resetUnverifiedReports = mutation({
   args: {},
   handler: async (ctx) => {
@@ -418,7 +422,14 @@ export const resetUnverifiedReports = mutation({
     let count = 0;
     for (const r of all) {
       if (r.status !== "Resolved" && r.status !== "Completed") {
-        await ctx.db.patch(r._id, { verified: false, status: "pending" });
+        const risk = r.riskLevel && r.riskLevel !== "pending" && r.riskLevel !== "verified"
+          ? r.riskLevel
+          : (r.status !== "pending" && r.status !== "verified" ? r.status : "CRITICAL");
+        await ctx.db.patch(r._id, {
+          verified: false,
+          status: risk,
+          riskLevel: risk,
+        });
         count++;
       }
     }

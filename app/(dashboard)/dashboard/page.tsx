@@ -263,9 +263,10 @@ export default function DashboardPage() {
 
     reportsData.forEach((r: any) => {
       const s = r.status?.toLowerCase() || ''
+      const rl = r.riskLevel?.toLowerCase() || ''
       if (s === 'resolved' || s === 'completed') {
         resolved++
-      } else if (s === 'critical' || (r as any).risk === 'High') {
+      } else if (s === 'critical' || rl === 'critical' || (r as any).risk === 'High') {
         critical++
       } else if (r.verified || s === 'verified') {
         verified++
@@ -302,7 +303,7 @@ export default function DashboardPage() {
     const list: LiveActivityItem[] = []
 
     reportsData.forEach((r: any) => {
-      const isCritical = r.status?.toLowerCase() === 'critical' || (r as any).risk === 'High'
+      const isCritical = r.status?.toLowerCase() === 'critical' || r.riskLevel?.toLowerCase() === 'critical' || (r as any).risk === 'High'
       const isVerified = r.verified === true || r.status?.toLowerCase() === 'verified'
       const isResolved = r.status?.toLowerCase() === 'resolved' || r.status?.toLowerCase() === 'completed'
       const loc = getLocationHierarchy(r)
