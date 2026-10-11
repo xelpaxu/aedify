@@ -53,6 +53,7 @@ export default defineSchema({
     lat: v.number(),
     lng: v.number(),
     status: v.string(),
+    riskLevel: v.optional(v.string()),
     barangay: v.optional(v.string()),
     public: v.optional(v.boolean()),
     reviewType: v.optional(v.literal("admin-modified")),

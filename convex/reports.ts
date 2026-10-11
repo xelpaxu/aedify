@@ -153,6 +153,7 @@ export const createReport = mutation({
     lat: v.number(),
     lng: v.number(),
     status: v.string(),
+    riskLevel: v.optional(v.string()),
     detections: v.optional(v.array(v.any())),
     clerkUserId: v.optional(v.string()),
     barangay: v.optional(v.string()),
@@ -161,8 +162,9 @@ export const createReport = mutation({
   handler: async (ctx, args) => {
     const id = await ctx.db.insert("reports", {
       ...args,
-      verified: args.verified || false,
+      verified: false,
       status: args.status || "pending",
+      riskLevel: args.riskLevel,
       detections: args.detections || [],
       processedImage: args.processedImage || "",
       reasoning: args.reasoning || "",
@@ -396,3 +398,31 @@ export const resolveAreaReports = mutation({
     return { success: true, resolvedCount: matchingReports.length };
   },
 });
+
+// Unverify a report (reverts to pending state)
+export const unverifyReport = mutation({
+  args: { id: v.id("reports") },
+  handler: async (ctx, { id }) => {
+    const existing = await ctx.db.get(id);
+    if (!existing) throw new Error("Report not found");
+    await ctx.db.patch(id, { verified: false, status: "pending" });
+    return { success: true };
+  },
+});
+
+// Reset all unreviewed reports to pending
+export const resetUnverifiedReports = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const all = await ctx.db.query("reports").collect();
+    let count = 0;
+    for (const r of all) {
+      if (r.status !== "Resolved" && r.status !== "Completed") {
+        await ctx.db.patch(r._id, { verified: false, status: "pending" });
+        count++;
+      }
+    }
+    return { updated: count };
+  },
+});
+
