@@ -11,6 +11,7 @@
 import type * as analysis from "../analysis.js";
 import type * as assignments from "../assignments.js";
 import type * as auth from "../auth.js";
+import type * as dashboard from "../dashboard.js";
 import type * as migrations from "../migrations.js";
 import type * as myFunctions from "../myFunctions.js";
 import type * as notifications from "../notifications.js";
@@ -27,6 +28,7 @@ declare const fullApi: ApiFromModules<{
   analysis: typeof analysis;
   assignments: typeof assignments;
   auth: typeof auth;
+  dashboard: typeof dashboard;
   migrations: typeof migrations;
   myFunctions: typeof myFunctions;
   notifications: typeof notifications;

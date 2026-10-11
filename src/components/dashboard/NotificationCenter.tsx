@@ -151,6 +151,13 @@ export function NotificationCenter() {
           const isCrit = r.status?.toLowerCase() === 'critical'
           const thumb = normalizeReportImage(r.processedImage || r.imageUri) || '/assets/images/breeding-site.jpeg'
 
+          const rawTime = (r as any).timestamp
+          const parsedTime = typeof rawTime === 'number'
+            ? rawTime
+            : rawTime
+              ? new Date(rawTime).getTime()
+              : r._creationTime || Date.now()
+
           list.push({
             id: `rep-notif-${r._id}`,
             title: isCrit ? 'Critical Vector Hazard Reported' : 'New Surveillance Report',
@@ -158,7 +165,7 @@ export function NotificationCenter() {
             reportId: String(r._id),
             type: isCrit ? 'critical_report' : 'new_report',
             read: r.status?.toLowerCase() === 'resolved' || locallyReadIds.has(`rep-notif-${r._id}`),
-            createdAt: (r as any).timestamp || r._creationTime || Date.now(),
+            createdAt: Number.isNaN(parsedTime) ? (r._creationTime || Date.now()) : parsedTime,
             isCritical: isCrit,
             thumbnail: thumb,
           })

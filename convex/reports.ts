@@ -61,6 +61,17 @@ export const verifyReport = mutation({
   },
 });
 
+// Unverify a report (reverts to unverified state, preserves risk level)
+export const unverifyReport = mutation({
+  args: { id: v.id("reports") },
+  handler: async (ctx, { id }) => {
+    const existing = await ctx.db.get(id);
+    if (!existing) throw new Error("Report not found");
+    await ctx.db.patch(id, { verified: false });
+    return { success: true };
+  },
+});
+
 // Human validation replaces the AI assessment shown on the report.
 export const modifyReport = mutation({
   args: {
@@ -123,6 +134,8 @@ export const updateReport = mutation({
     lat: v.optional(v.number()),
     lng: v.optional(v.number()),
     status: v.optional(v.string()),
+    riskLevel: v.optional(v.string()),
+    timestamp: v.optional(v.number()),
   },
   handler: async (ctx, { id, ...fields }) => {
     const existing = await ctx.db.get(id);
@@ -134,6 +147,8 @@ export const updateReport = mutation({
     if (fields.lat !== undefined) updates.lat = fields.lat;
     if (fields.lng !== undefined) updates.lng = fields.lng;
     if (fields.status !== undefined) updates.status = fields.status;
+    if (fields.riskLevel !== undefined) updates.riskLevel = fields.riskLevel;
+    if (fields.timestamp !== undefined) updates.timestamp = fields.timestamp;
 
     if (Object.keys(updates).length > 0) {
       await ctx.db.patch(id, updates);
@@ -162,13 +177,16 @@ export const createReport = mutation({
     clerkUserId: v.optional(v.string()),
     barangay: v.optional(v.string()),
     public: v.optional(v.boolean()),
+    timestamp: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
+    const timestamp = args.timestamp ?? Date.now();
     const id = await ctx.db.insert("reports", {
       ...args,
+      timestamp,
       verified: false,
       status: args.status || "pending",
-      riskLevel: args.riskLevel,
+      riskLevel: args.riskLevel || args.status || "pending",
       detections: args.detections || [],
       processedImage: args.processedImage || "",
       reasoning: args.reasoning || "",
@@ -177,7 +195,7 @@ export const createReport = mutation({
     });
 
     // Create system broadcast notification for incoming report
-    const isCritical = args.status?.toLowerCase() === "critical";
+    const isCritical = (args.status || args.riskLevel)?.toLowerCase() === "critical";
     await ctx.db.insert("notifications", {
       userId: "all",
       type: isCritical ? "critical_report" : "new_report",
@@ -185,7 +203,7 @@ export const createReport = mutation({
       message: `New incident reported at ${args.locationName} (${args.detections?.[0] || 'Breeding Site'}).`,
       reportId: id as string,
       read: false,
-      createdAt: Date.now(),
+      createdAt: timestamp,
     });
 
     return id;
@@ -403,17 +421,6 @@ export const resolveAreaReports = mutation({
   },
 });
 
-// Unverify a report (reverts to unverified state, preserves risk level)
-export const unverifyReport = mutation({
-  args: { id: v.id("reports") },
-  handler: async (ctx, { id }) => {
-    const existing = await ctx.db.get(id);
-    if (!existing) throw new Error("Report not found");
-    await ctx.db.patch(id, { verified: false });
-    return { success: true };
-  },
-});
-
 // Reset all unreviewed reports to unverified while restoring their risk levels
 export const resetUnverifiedReports = mutation({
   args: {},
@@ -437,3 +444,32 @@ export const resetUnverifiedReports = mutation({
   },
 });
 
+// Update timestamp directly on a report (for seeding / custom dates)
+export const updateReportTimestamp = mutation({
+  args: {
+    id: v.id("reports"),
+    timestamp: v.number(),
+  },
+  handler: async (ctx, { id, timestamp }) => {
+    const existing = await ctx.db.get(id);
+    if (!existing) throw new Error("Report not found");
+    await ctx.db.patch(id, { timestamp });
+    return { success: true };
+  },
+});
+
+// Backfill any existing reports that don't have timestamp yet, using their _creationTime
+export const backfillTimestamps = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const all = await ctx.db.query("reports").collect();
+    let count = 0;
+    for (const r of all) {
+      if (r.timestamp === undefined) {
+        await ctx.db.patch(r._id, { timestamp: r._creationTime });
+        count++;
+      }
+    }
+    return { updated: count };
+  },
+});

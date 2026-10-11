@@ -70,10 +70,12 @@ export default defineSchema({
     resolutionImage: v.optional(v.string()),
     resolvedBy: v.optional(v.string()),
     resolvedAt: v.optional(v.number()),
+    timestamp: v.optional(v.number()),
   })
     .index("by_clerkUserId", ["clerkUserId"])
     .index("by_barangay", ["barangay"])
-    .index("by_status", ["status"]),
+    .index("by_status", ["status"])
+    .index("by_timestamp", ["timestamp"]),
 
   assignments: defineTable({
     reportId: v.id("reports"),
