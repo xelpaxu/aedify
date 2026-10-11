@@ -158,7 +158,7 @@ export function NotificationCenter() {
             reportId: String(r._id),
             type: isCrit ? 'critical_report' : 'new_report',
             read: r.status?.toLowerCase() === 'resolved' || locallyReadIds.has(`rep-notif-${r._id}`),
-            createdAt: r.timestamp || r._creationTime || Date.now(),
+            createdAt: (r as any).timestamp || r._creationTime || Date.now(),
             isCritical: isCrit,
             thumbnail: thumb,
           })
@@ -267,11 +267,10 @@ export function NotificationCenter() {
         {toasts.map((toast) => (
           <div
             key={toast.id}
-            className={`pointer-events-auto p-4 rounded-3xl shadow-2xl border flex gap-3.5 items-start bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl animate-in slide-in-from-top-4 duration-300 ${
-              toast.isCritical
-                ? 'border-rose-300 dark:border-rose-900/60 shadow-rose-500/10'
-                : 'border-primary-200 dark:border-primary-900/60 shadow-primary-500/10'
-            }`}
+            className={`pointer-events-auto p-4 rounded-3xl shadow-2xl border flex gap-3.5 items-start bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl animate-in slide-in-from-top-4 duration-300 ${toast.isCritical
+              ? 'border-rose-300 dark:border-rose-900/60 shadow-rose-500/10'
+              : 'border-primary-200 dark:border-primary-900/60 shadow-primary-500/10'
+              }`}
           >
             {/* Thumbnail */}
             <div className="w-12 h-12 rounded-2xl overflow-hidden shrink-0 bg-slate-900 border border-slate-200 relative">
@@ -292,11 +291,10 @@ export function NotificationCenter() {
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between gap-1">
                 <span
-                  className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md ${
-                    toast.isCritical
-                      ? 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300'
-                      : 'bg-primary-100 text-primary-800 dark:bg-primary-950 dark:text-primary-300'
-                  }`}
+                  className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md ${toast.isCritical
+                    ? 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300'
+                    : 'bg-primary-100 text-primary-800 dark:bg-primary-950 dark:text-primary-300'
+                    }`}
                 >
                   {toast.isCritical ? 'Critical Alert' : 'Live Update'}
                 </span>
@@ -339,11 +337,10 @@ export function NotificationCenter() {
         <button
           onClick={() => setIsOpen(!isOpen)}
           aria-label="Toggle notifications"
-          className={`relative p-2.5 rounded-xl transition-all ${
-            isOpen
-              ? 'bg-primary-50 text-primary-700 dark:bg-slate-800 dark:text-white'
-              : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800'
-          }`}
+          className={`relative p-2.5 rounded-xl transition-all ${isOpen
+            ? 'bg-primary-50 text-primary-700 dark:bg-slate-800 dark:text-white'
+            : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800'
+            }`}
         >
           <Bell size={18} strokeWidth={1.8} />
 
@@ -361,7 +358,7 @@ export function NotificationCenter() {
             <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
 
             <div className="absolute right-0 top-full mt-3 w-80 sm:w-96 bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200/80 dark:border-slate-800 z-50 overflow-hidden animate-scale-in flex flex-col max-h-[520px]">
-              
+
               {/* Header */}
               <div className="p-4 pb-3 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/50">
                 <div className="flex items-center gap-2">
@@ -401,11 +398,10 @@ export function NotificationCenter() {
                   <button
                     key={tab}
                     onClick={() => setActiveTab(tab)}
-                    className={`px-3 py-1 rounded-xl text-[11px] font-bold capitalize transition-all ${
-                      activeTab === tab
-                        ? 'bg-slate-900 text-white dark:bg-primary-600'
-                        : 'text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800'
-                    }`}
+                    className={`px-3 py-1 rounded-xl text-[11px] font-bold capitalize transition-all ${activeTab === tab
+                      ? 'bg-slate-900 text-white dark:bg-primary-600'
+                      : 'text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800'
+                      }`}
                   >
                     {tab === 'all' ? 'All' : tab}
                   </button>
@@ -424,11 +420,10 @@ export function NotificationCenter() {
                     <div
                       key={notif.id}
                       onClick={() => handleNotificationClick(notif)}
-                      className={`p-3.5 flex gap-3 items-start transition-colors cursor-pointer group ${
-                        !notif.read
-                          ? 'bg-primary-50/30 dark:bg-primary-950/20 hover:bg-primary-50/60 dark:hover:bg-primary-950/40'
-                          : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'
-                      }`}
+                      className={`p-3.5 flex gap-3 items-start transition-colors cursor-pointer group ${!notif.read
+                        ? 'bg-primary-50/30 dark:bg-primary-950/20 hover:bg-primary-50/60 dark:hover:bg-primary-950/40'
+                        : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'
+                        }`}
                     >
                       {/* Left Icon / Thumbnail */}
                       <div className="w-10 h-10 rounded-xl overflow-hidden shrink-0 flex items-center justify-center bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 relative">
