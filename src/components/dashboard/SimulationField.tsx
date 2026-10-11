@@ -741,17 +741,19 @@ export default function SimulationField({ onClose, reports }: SimulationFieldPro
         signal: requestController.signal,
       })
 
-      const data = await response.json()
+      const contentType = response.headers.get('content-type') || ''
+      const isJson = contentType.includes('application/json')
+      const data = isJson ? await response.json().catch(() => null) : null
 
       if (!response.ok) {
         throw new Error(
-          typeof data.detail === 'string'
+          data && typeof data.detail === 'string'
             ? data.detail
-            : `Simulation error (${response.status}). Please verify report coordinates and connectivity.`
+            : `Simulation service error (${response.status}). Please check your server connection or API route.`
         )
       }
 
-      if (!Array.isArray(data.timeline) || !Array.isArray(data.weather_sequence)) {
+      if (!data || !Array.isArray(data.timeline) || !Array.isArray(data.weather_sequence)) {
         throw new Error('Simulation API returned invalid payload structure. Please ensure the Python server is running version 2.0+.')
       }
 
