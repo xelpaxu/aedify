@@ -119,7 +119,9 @@ interface TravelingMosq {
 }
 
 const CLOSED_STATUSES = new Set(['RESOLVED', 'COMPLETED', 'CLOSED', 'DISMISSED', 'REJECTED'])
-const ABM_URL = (process.env.NEXT_PUBLIC_SIMULATION_API_URL || 'http://localhost:5000').replace(/\/$/, '')
+const SIMULATION_ENDPOINT = process.env.NEXT_PUBLIC_SIMULATION_API_URL
+  ? `${process.env.NEXT_PUBLIC_SIMULATION_API_URL.replace(/\/$/, '')}/simulate`
+  : '/api/simulate'
 export const ILOILO_CITY_CENTER: LatLngTuple = [10.6953, 122.5447] // Molo District, Iloilo City
 
 export function distanceMeters(lat1: number, lng1: number, lat2: number, lng2: number): number {
@@ -732,7 +734,7 @@ export default function SimulationField({ onClose, reports }: SimulationFieldPro
         }))
       }
 
-      const response = await fetch(`${ABM_URL}/simulate`, {
+      const response = await fetch(SIMULATION_ENDPOINT, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
